@@ -221,7 +221,7 @@ class DifferentialEvolution:
 
             fit = np.full((self.n_pop,), np.inf)
             for result in results:
-                val, ii = result
+                (val, ii), _ = result
                 fit[ii] = val
         else:
             fit = [self.fobj(ind) for ind in pop]
