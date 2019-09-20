@@ -219,7 +219,7 @@ class DifferentialEvolutionDriver(Driver):
             ub = meta['upper']
             if isinstance(ub, float):
                 ub = [ub] * (j - i)
-            for k in range(i, j):
+            for k in range(j - i):
                 bounds += [(lb[k], ub[k])]
             x0[i:j] = desvar_vals[name]
 
