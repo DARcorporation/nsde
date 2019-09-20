@@ -226,11 +226,19 @@ class DifferentialEvolutionDriver(Driver):
         de.init(self.objective_callback, bounds)
 
         gen_iter = de
-        if self.options["show_progress"]:
+        if rank == 0 and self.options["show_progress"] and tqdm is not None:
             gen_iter = tqdm(gen_iter, total=self.options["max_gen"])
 
         last_generation = None
         for generation in gen_iter:
+            if rank == 0:
+                s = " "
+                if tqdm is None:
+                    s += f"gen: {generation.generation:>5g} / {generation.max_gen}, "
+                s += f"f*: {generation.best_fit:> 10.4g}, " \
+                     f"dx: {generation.dx:> 10.4g} " \
+                     f"df: {generation.df:> 10.4g}".replace('\n', '')
+                print(s.replace('\n', ''))
             last_generation = generation
 
         best = last_generation.best
