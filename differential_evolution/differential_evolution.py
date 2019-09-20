@@ -108,6 +108,7 @@ class DifferentialEvolution:
         self.best_idx, self.worst_idx = 0, 0
         self.best, self.worst = None, None
         self.best_fit, self.worst_fit = 0, 0
+        self.dx, self.df = np.inf, np.inf
 
         self.generation = 0
 
@@ -173,14 +174,15 @@ class DifferentialEvolution:
             fit_new = self(pop_new)
             self.update(pop_new, fit_new)
 
-            yield self
+            self.dx = np.sum((self.range * (self.worst - self.best)) ** 2) ** 0.5
+            self.df = np.abs(self.worst_fit - self.best_fit)
             self.generation += 1
 
-            dx = np.sum((self.range * (self.worst - self.best)) ** 2) ** 0.5
-            df = np.abs(self.worst_fit - self.best_fit)
-            if dx < self.tolx:
+            yield self
+
+            if self.dx < self.tolx:
                 break
-            if df < self.tolf:
+            if self.df < self.tolf:
                 break
 
     def __call__(self, pop):
