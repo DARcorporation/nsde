@@ -13,7 +13,7 @@ setup(
         'openmdao': ['openmdao>=2.8'],
     },
     install_requires=['numpy>=1.7'],
-    tests_require=['pytest', 'pytest-pep8'],
+    tests_require=['openmdao>=2.8', 'pytest', 'pytest-pep8'],
     url='https://github.com/daniel-de-vries/differential-evolution',
     download_url='https://github.com/daniel-de-vries/differential-evolution/archive/v{0}.tar.gz'.format(__version__),
     keywords=['optimization', 'black-box', 'data science', 'differential', 'evolution', 'evolutionary', 'algorithms'],
