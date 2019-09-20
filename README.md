@@ -1,0 +1,2 @@
+# Differential Evolution Algorithm
+[![Build Status](https://travis-ci.com/daniel-de-vries/differential-evolution.svg?token=GPU5VxAUAv31GwmrqCts&branch=master)](https://travis-ci.com/daniel-de-vries/differential-evolution)
