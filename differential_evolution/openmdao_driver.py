@@ -410,4 +410,4 @@ class DifferentialEvolutionDriver(Driver):
         # print("Functions calculated")
         # print(x)
         # print(obj)
-        return fun
+        return fun[0]
