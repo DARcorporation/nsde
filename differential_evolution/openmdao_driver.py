@@ -241,7 +241,7 @@ class DifferentialEvolutionDriver(Driver):
                 print(s.replace('\n', ''))
             last_generation = generation
 
-        best = last_generation.best
+        best = last_generation.best if last_generation is not None else de.best
         # Pull optimal parameters back into framework and re-run, so that
         # framework is left in the right final state
         for name in desvars:
