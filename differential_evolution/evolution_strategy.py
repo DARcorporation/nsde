@@ -222,7 +222,11 @@ class EvolutionStrategy:
             parts = self._designation.split('/')
             self.mutate = self.__mutation_strategies__[parts[0]](int(parts[1]))
             self.crossover = self.__crossover_strategies__[parts[2]]
-            self.repair = self.__repair_strategies__[parts[3]] if len(parts) >= 4 else clip
+            if len(parts) >= 4:
+                self.repair = self.__repair_strategies__[parts[3]]
+            else:
+                self.repair = clip
+                self._designation += '/clip'
         except AttributeError or KeyError or IndexError or ValueError:
             raise ValueError(f"Invalid evolution strategy '{designation}'")
 
