@@ -2,7 +2,7 @@
 import numpy as np
 
 
-def mutation_helper(n, parent_idx, population, mutation_rate, rng):
+def mutation_helper(n, parent_idx, population, rng):
     """Helper function for the mutation strategies
 
     Parameters
@@ -13,20 +13,19 @@ def mutation_helper(n, parent_idx, population, mutation_rate, rng):
         Index of the parent
     population : array_like
         Individuals of the population
-    mutation_rate : float
     rng : np.random.Generator
         Random number generator
 
     Returns
     -------
     r : np.array
+        List of indices of chosen individuals to use for the mutation operation
+    ind : np.array
         List of chosen individuals to use for the mutation operation
-    s : np.array
-        Chromosome contribution shared by all mutation strategies
     """
     idxs = [idx for idx in range(population.shape[0]) if idx != parent_idx]
-    r = population[rng.choice(idxs, size=1 + 2 * n, replace=False)]
-    return r, mutation_rate * np.sum(r[1:-1:2] - r[2:len(r) + 1:2], axis=0)
+    r = rng.choice(idxs, size=1 + 2 * n, replace=False)
+    return r, population[r]
 
 
 def rand(n):
@@ -43,9 +42,18 @@ def rand(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, mutation_rate, rng):
-        r, s = mutation_helper(n, parent_idx, population, mutation_rate, rng)
-        return r[0] + s
+    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+        r, ind = mutation_helper(n, parent_idx, population, rng)
+
+        if self_adaptive:
+            f_mutant = f[r[0]] + np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
+            cr_mutant = cr[r[0]] + np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+        else:
+            f_mutant = f[parent_idx]
+            cr_mutant = cr[parent_idx]
+
+        mutant = ind[0] + f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        return mutant, f_mutant, cr_mutant
 
     return mutate
 
@@ -64,9 +72,20 @@ def best(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, mutation_rate, rng):
-        r, s = mutation_helper(n, parent_idx, population, mutation_rate, rng)
-        return population[np.argmin(fitness)] + s
+    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+        r, ind = mutation_helper(n, parent_idx, population, rng)
+
+        i_best = np.argmin(fitness)
+
+        if self_adaptive:
+            f_mutant = f[i_best] + np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
+            cr_mutant = cr[i_best] + np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+        else:
+            f_mutant = f[parent_idx]
+            cr_mutant = cr[parent_idx]
+
+        mutant = population[i_best] + f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        return mutant, f_mutant, cr_mutant
 
     return mutate
 
@@ -85,9 +104,26 @@ def rand_to_best(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, mutation_rate, rng):
-        r, s = mutation_helper(n, parent_idx, population, mutation_rate, rng)
-        return r[0] + mutation_rate * (population[np.argmin(fitness)] - r[0]) + s
+    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+        r, ind = mutation_helper(n, parent_idx, population, rng)
+
+        i_best = np.argmin(fitness)
+
+        if self_adaptive:
+            f_mutant = f[parent_idx] + \
+                       rng.normal() * 0.5 * (f[i_best] - f[parent_idx]) + \
+                       np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
+            cr_mutant = cr[parent_idx] + \
+                        rng.normal() * 0.5 * (cr[i_best] - cr[parent_idx]) + \
+                        np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+        else:
+            f_mutant = f[parent_idx]
+            cr_mutant = cr[parent_idx]
+
+        mutant = r[0] + \
+                 f_mutant * (population[i_best] - ind[0]) + \
+                 f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        return mutant, f_mutant, cr_mutant
 
     return mutate
 
@@ -230,7 +266,7 @@ class EvolutionStrategy:
         except AttributeError or KeyError or IndexError or ValueError:
             raise ValueError(f"Invalid evolution strategy '{designation}'")
 
-    def __call__(self, parent_idx, population, fitness, mutation_rate, crossover_probability, rng):
+    def __call__(self, parent_idx, population, fitness, f, cr, rng, self_adaptive=False):
         """Procreate!
 
         Parameters
@@ -241,20 +277,24 @@ class EvolutionStrategy:
             List of individuals making up the population
         fitness : array_like
             Fitness of the individuals in the population
-        mutation_rate : float
-        crossover_probability : float
+        f : float or array_like
+            Mutation rate
+        cr : float or array_like
+            Crossover probability
         rng : np.random.Generator
             Random number generator
+        self_adaptive : bool
+            True for self-adaptivity
 
         Returns
         -------
         np.array
             A child!
         """
-        mutant = self.mutate(parent_idx, population, fitness, mutation_rate, rng)
-        mutant = self.crossover(population[parent_idx], mutant, crossover_probability, rng)
+        mutant, f_mutant, cr_mutant = self.mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive)
+        mutant = self.crossover(population[parent_idx], mutant, cr_mutant, rng)
         mutant = self.repair(mutant, rng)
-        return mutant
+        return mutant, f_mutant, cr_mutant
 
     def __repr__(self):
         return self._designation

@@ -43,7 +43,12 @@ class DifferentialEvolution:
     range : array_like
         Distances between the lower and upper bounds
     f, cr : float
-        Mutation rate and crossover probability
+        Mutation rate and crossover probabilities
+    adaptivity : int
+        Method of self-adaptivity.
+            - 0: No self-adaptivity. Specified mutation rate and crossover probability are used.
+            - 1: Simple self-adaptability. Mutation rate and crossover probability are optimized Mote-Carlo style.
+            - 2: Complex self-adaptability. Mutation rate and crossover probability are mutated with specified strategy.
     max_gen : int
         Maximum number of generations
     tolx, tolf : float
@@ -76,7 +81,7 @@ class DifferentialEvolution:
         Generation counter
     """
 
-    def __init__(self, strategy=None, mut=0.85, crossp=1.,
+    def __init__(self, strategy=None, mut=0.85, crossp=1., adaptivity=0,
                  max_gen=100, tolx=1e-6, tolf=1e-6,
                  n_pop=None, seed=None, comm=None, model_mpi=None):
         self.fobj = None
@@ -96,12 +101,16 @@ class DifferentialEvolution:
 
         self.rng = np.random.default_rng(seed)
 
+        if adaptivity not in [0, 1, 2]:
+            raise ValueError("self_adaptivity must be one of (0, 1, 2).")
+        self.adaptivity = adaptivity
+
         self.comm = comm
         self.model_mpi = model_mpi
 
         self.strategy = strategy
         if strategy is None:
-            self.strategy = EvolutionStrategy("best-to-rand/1/exp")
+            self.strategy = EvolutionStrategy("rand-to-best/1/exp")
 
         self.pop = None
         self.fit = None
@@ -145,8 +154,18 @@ class DifferentialEvolution:
             self.n_pop = self.n_dim * 5
             self.pop = self.rng.uniform(self.lb, self.ub, size=(self.n_pop, self.n_dim))
 
+        if self.adaptivity == 0:
+            self.f = self.f * np.ones(self.n_pop)
+            self.cr = self.cr * np.ones(self.n_pop)
+        elif self.adaptivity == 1:
+            self.f = self.rng.uniform(size=self.n_pop) * 0.9 + 0.1
+            self.cr = self.rng.uniform(size=self.n_pop)
+        elif self.adaptivity == 2:
+            self.f = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
+            self.cr = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
+
         self.fit = self(self.pop)
-        self.update(self.pop, self.fit)
+        self.update(self.pop, self.fit, self.f, self.cr)
 
         self.generation = 0
 
@@ -170,9 +189,9 @@ class DifferentialEvolution:
             raise RuntimeError("DifferentialEvolution is not yet initialized.")
 
         while self.generation < self.max_gen:
-            pop_new = self.procreate()
+            pop_new, f_new, cr_new = self.procreate()
             fit_new = self(pop_new)
-            self.update(pop_new, fit_new)
+            self.update(pop_new, fit_new, f_new, cr_new)
 
             self.dx = np.sum((self.range * (self.worst - self.best)) ** 2) ** 0.5
             self.df = np.abs(self.worst_fit - self.best_fit)
@@ -233,16 +252,50 @@ class DifferentialEvolution:
 
         Returns
         -------
-        np.array
+        pop_new : np.array
             Chromosomes of the individuals in the next generation
+        f_new : np.array
+            New set of mutation rates
+        cr_new : np.array
+            New set of crossover probabilities
         """
         pop_old_norm = (np.copy(self.pop) - self.lb) / self.range
-        pop_new_norm = [self.strategy(idx, pop_old_norm, self.fit, self.f, self.cr, self.rng) for idx in range(self.n_pop)]
-        return self.lb + self.range * np.asarray(pop_new_norm)
+        pop_new_norm = np.empty_like(pop_old_norm)
 
-    def update(self, pop_new, fit_new):
+        if self.adaptivity == 0 or self.adaptivity == 1:
+            if self.adaptivity == 0:
+                # No adaptivity. Use static f and cr.
+                f_new = self.f
+                cr_new = self.cr
+            else:
+                # Simple adaptivity. Use new f and cr.
+                f_new = np.where(
+                    self.rng.uniform(size=self.n_pop) < 0.9,
+                    self.f,
+                    self.rng.uniform(size=self.n_pop) * 0.9 + 1
+                )
+                cr_new = np.where(
+                    self.rng.uniform(size=self.n_pop) < 0.9,
+                    self.cr,
+                    self.rng.uniform(size=self.n_pop)
+                )
+
+            for idx in range(self.n_pop):
+                pop_new_norm[idx], _, _ = self.strategy(idx, pop_old_norm, self.fit, f_new, cr_new, self.rng, False)
+        else:
+            # Complex adaptivity. Mutate f and cr.
+            f_new = np.copy(self.f)
+            cr_new = np.copy(self.cr)
+
+            for idx in range(self.n_pop):
+                pop_new_norm[idx], f_new[idx], cr_new[idx] = self.strategy(idx, pop_old_norm, self.fit,
+                                                                           self.f, self.cr, self.rng, True)
+
+        return self.lb + self.range * np.asarray(pop_new_norm), f_new, cr_new
+
+    def update(self, pop_new, fit_new, f_new, cr_new):
         """
-        Update the population and identify the new best and worst individuals.
+        Update the population (and f/cr if self-adaptive) and identify the new best and worst individuals.
 
         Parameters
         ----------
@@ -250,10 +303,16 @@ class DifferentialEvolution:
             Proposed new population resulting from procreation
         fit_new : np.array
             Fitness of the individuals in the new population
+        f_new : np.array
+            New set of mutation rates
+        cr_new : np.array
+            New set of crossover probabilities
 
         Notes
         -----
         Individuals in the old population will only be replaced by the new ones if they have improved fitness.
+        Mutation rate and crossover probabilities will only be replaced if self-adaptivity is turned on and if their
+        corresponding individuals have improved fitness.
         """
         improved_idxs = np.argwhere(fit_new <= self.fit)
         self.pop[improved_idxs] = pop_new[improved_idxs]
@@ -266,3 +325,7 @@ class DifferentialEvolution:
         self.worst_idx = np.argmax(self.fit)
         self.worst = self.pop[self.worst_idx]
         self.worst_fit = self.fit[self.worst_idx]
+
+        if self.adaptivity != 0:
+            self.f[improved_idxs] = f_new[improved_idxs]
+            self.cr[improved_idxs] = cr_new[improved_idxs]

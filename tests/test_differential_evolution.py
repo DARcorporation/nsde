@@ -20,3 +20,34 @@ def test_differential_evolution():
 
     assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
     assert last_generation.best_fit < 1e-4
+
+
+def test_differential_evolution_self_adaptive_1():
+    dim = 2
+
+    strategy = EvolutionStrategy("rand/1/exp")
+    de = DifferentialEvolution(strategy=strategy, max_gen=1000, tolx=1e-8, tolf=1e-8, adaptivity=1)
+    de.init(paraboloid, bounds=[(-100, 100)] * dim)
+
+    last_generation = None
+    for last_generation in de:
+        pass
+
+    assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
+    assert last_generation.best_fit < 1e-4
+
+
+def test_differential_evolution_self_adaptive_2():
+    dim = 2
+
+    strategy = EvolutionStrategy("rand/1/exp")
+    de = DifferentialEvolution(strategy=strategy, max_gen=1000, tolx=1e-8, tolf=1e-8, adaptivity=2)
+    de.init(paraboloid, bounds=[(-100, 100)] * dim)
+
+    last_generation = None
+    for last_generation in de:
+        print(last_generation.best)
+        pass
+
+    assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
+    assert last_generation.best_fit < 1e-4
