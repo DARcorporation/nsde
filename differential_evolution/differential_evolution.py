@@ -82,7 +82,7 @@ class DifferentialEvolution:
     """
 
     def __init__(self, strategy=None, mut=0.85, crossp=1., adaptivity=0,
-                 max_gen=100, tolx=1e-6, tolf=1e-6,
+                 max_gen=1000, tolx=1e-8, tolf=1e-8,
                  n_pop=None, seed=None, comm=None, model_mpi=None):
         self.fobj = None
 
