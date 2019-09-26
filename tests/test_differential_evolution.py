@@ -1,4 +1,6 @@
 import numpy as np
+import pytest
+import itertools
 
 from differential_evolution import *
 
@@ -7,47 +9,40 @@ def paraboloid(x):
     return np.sum(x * x)
 
 
-def test_differential_evolution():
+@pytest.mark.parametrize(
+    "strategy, adaptivity",
+    list(
+        itertools.product(
+            [
+                "/".join(s)
+                for s in itertools.product(
+                    *[
+                        EvolutionStrategy.__mutation_strategies__.keys(),
+                        ["1", "2", "3"],
+                        EvolutionStrategy.__crossover_strategies__.keys(),
+                        EvolutionStrategy.__repair_strategies__.keys(),
+                    ]
+                )
+            ],
+            [0, 1, 2],
+        )
+    ),
+)
+def test_differential_evolution(strategy, adaptivity):
+    tol = 1e-8
     dim = 2
 
-    strategy = EvolutionStrategy("rand/1/exp")
-    de = DifferentialEvolution(strategy=strategy, max_gen=1000, tolx=1e-8, tolf=1e-8)
+    strategy = EvolutionStrategy(strategy)
+    de = DifferentialEvolution(strategy=strategy, tolx=tol, tolf=tol, adaptivity=adaptivity)
     de.init(paraboloid, bounds=[(-100, 100)] * dim)
 
     last_generation = None
     for last_generation in de:
         pass
 
-    assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
-    assert last_generation.best_fit < 1e-4
+    assert last_generation.dx < tol or last_generation.df < tol
 
-
-def test_differential_evolution_self_adaptive_1():
-    dim = 2
-
-    strategy = EvolutionStrategy("rand/1/exp")
-    de = DifferentialEvolution(strategy=strategy, max_gen=1000, tolx=1e-8, tolf=1e-8, adaptivity=1)
-    de.init(paraboloid, bounds=[(-100, 100)] * dim)
-
-    last_generation = None
-    for last_generation in de:
-        pass
-
-    assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
-    assert last_generation.best_fit < 1e-4
-
-
-def test_differential_evolution_self_adaptive_2():
-    dim = 2
-
-    strategy = EvolutionStrategy("rand/1/exp")
-    de = DifferentialEvolution(strategy=strategy, max_gen=1000, tolx=1e-8, tolf=1e-8, adaptivity=2)
-    de.init(paraboloid, bounds=[(-100, 100)] * dim)
-
-    last_generation = None
-    for last_generation in de:
-        print(last_generation.best)
-        pass
-
-    assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
-    assert last_generation.best_fit < 1e-4
+    if strategy.__repr__().split("/")[0] != "best":
+        # The "best" mutation strategy collapses prematurely sometimes, so we can't be sure this is always true
+        assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
+        assert last_generation.best_fit < 1e-4
