@@ -63,7 +63,7 @@ class DifferentialEvolutionDriver(Driver):
                              desc='Mutation rate.', default=0.85, lower=0., upper=1.)
         self.options.declare('Pc', default=1., lower=0., upper=1.,
                              desc='Crossover rate.')
-        self.options.declare('max_gen', default=100,
+        self.options.declare('max_gen', default=1000,
                              desc='Number of generations before termination.')
         self.options.declare("tolx", default=1e-8,
                              desc="Tolerance of the design vectors' spread.")
