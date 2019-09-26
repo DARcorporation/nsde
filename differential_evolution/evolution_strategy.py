@@ -18,14 +18,18 @@ def mutation_helper(n, parent_idx, population, rng):
 
     Returns
     -------
-    r : np.array
+    idxs : np.array
         List of indices of chosen individuals to use for the mutation operation
-    ind : np.array
+    r : np.array
         List of chosen individuals to use for the mutation operation
+    s : np.array
+        Chromosome contribution shared by all mutation strategies
     """
     idxs = [idx for idx in range(population.shape[0]) if idx != parent_idx]
-    r = rng.choice(idxs, size=1 + 2 * n, replace=False)
-    return r, population[r]
+    idxs = rng.choice(idxs, size=1 + 2 * n, replace=False)
+    r = population[idxs]
+    s = np.sum(r[1:-1:2] - r[2:len(r) + 1:2], axis=0)
+    return idxs, r, s
 
 
 def rand(n):
@@ -43,16 +47,16 @@ def rand(n):
     """
 
     def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
-        r, ind = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
         if self_adaptive:
-            f_mutant = f[r[0]] + np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
-            cr_mutant = cr[r[0]] + np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+            f_mutant = f[idxs[0]] + np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
+            cr_mutant = cr[idxs[0]] + np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
 
-        mutant = ind[0] + f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        mutant = r[0] + f_mutant * s
         return mutant, f_mutant, cr_mutant
 
     return mutate
@@ -73,18 +77,18 @@ def best(n):
     """
 
     def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
-        r, ind = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
         i_best = np.argmin(fitness)
 
         if self_adaptive:
-            f_mutant = f[i_best] + np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
-            cr_mutant = cr[i_best] + np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+            f_mutant = f[i_best] + np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
+            cr_mutant = cr[i_best] + np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
 
-        mutant = population[i_best] + f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        mutant = population[i_best] + f_mutant * s
         return mutant, f_mutant, cr_mutant
 
     return mutate
@@ -105,24 +109,22 @@ def rand_to_best(n):
     """
 
     def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
-        r, ind = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
         i_best = np.argmin(fitness)
 
         if self_adaptive:
             f_mutant = f[parent_idx] + \
                        rng.normal() * 0.5 * (f[i_best] - f[parent_idx]) + \
-                       np.sum([rng.normal() * 0.5 * (f[r[i]] - f[r[i+1]]) for i in range(1, n)])
+                       np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
             cr_mutant = cr[parent_idx] + \
                         rng.normal() * 0.5 * (cr[i_best] - cr[parent_idx]) + \
-                        np.sum([rng.normal() * 0.5 * (cr[i] - cr[i+1]) for i in range(1, n)])
+                        np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
 
-        mutant = r[0] + \
-                 f_mutant * (population[i_best] - ind[0]) + \
-                 f_mutant * np.sum(ind[1:-1:2] - ind[2:len(r) + 1:2], axis=0)
+        mutant = r[0] + f_mutant * ((population[i_best] - r[0]) + s)
         return mutant, f_mutant, cr_mutant
 
     return mutate
