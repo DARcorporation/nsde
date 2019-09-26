@@ -60,9 +60,10 @@ class DifferentialEvolutionDriver(Driver):
         self.options.declare("strategy", default="rand-to-best/1/exp/random",
                              desc="Evolution strategy to use for the differential evolution.")
         self.options.declare('Pm',
-                             desc='Mutation rate.', default=0.85, lower=0., upper=1.)
-        self.options.declare('Pc', default=1., lower=0., upper=1.,
+                             desc='Mutation rate.', default=None, lower=0., upper=1., allow_none=True)
+        self.options.declare('Pc', default=None, lower=0., upper=1., allow_none=True,
                              desc='Crossover rate.')
+        self.options.declare('adaptivity', default=2, values=[0, 1, 2], desc='Self-adaptivity setting.')
         self.options.declare('max_gen', default=1000,
                              desc='Number of generations before termination.')
         self.options.declare("tolx", default=1e-8,
@@ -112,6 +113,7 @@ class DifferentialEvolutionDriver(Driver):
 
         self._es = EvolutionStrategy(self.options["strategy"])
         self._de = DifferentialEvolution(strategy=self._es, mut=self.options["Pm"], crossp=self.options["Pc"],
+                                         adaptivity=self.options["adaptivity"],
                                          max_gen=self.options["max_gen"],
                                          tolx=self.options["tolx"], tolf=self.options["tolf"],
                                          n_pop=self.options["pop_size"], seed=None,
@@ -183,6 +185,7 @@ class DifferentialEvolutionDriver(Driver):
         de.strategy = EvolutionStrategy(self.options['strategy'])
         de.f = self.options['Pm']
         de.cr = self.options['Pc']
+        de.adaptivity = self.options["adaptivity"]
         de.n_pop = self.options['pop_size']
         de.max_gen = self.options["max_gen"]
         de.tolx = self.options["tolx"]
