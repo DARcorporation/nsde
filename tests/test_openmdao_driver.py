@@ -42,3 +42,50 @@ def test_openmdao_driver(problem, mutation, number, crossover, repair, adaptivit
         # This is not a failed test, this is a known phenomenon with DE.
         # In this case we just check that one of the two tolerances was triggered.
         assert problem.driver._de.dx < tol or problem.driver._de.df < tol
+
+
+def test_openmdao_driver_recorder(problem):
+    from openmdao.recorders.case_recorder import CaseRecorder
+
+    class MyRecorder(CaseRecorder):
+        def record_metadata_system(self, recording_requester):
+            pass
+
+        def record_metadata_solver(self, recording_requester):
+            pass
+
+        def record_iteration_driver(self, recording_requester, data, metadata):
+            assert isinstance(recording_requester, DifferentialEvolutionDriver)
+            pop, fit = recording_requester.get_population()
+            assert "out" in data
+            assert "indeps.x" in data["out"]
+            assert "objf.f" in data["out"]
+
+            x = data["out"]["indeps.x"]
+            f = data["out"]["objf.f"]
+            assert x in pop
+            assert f in fit
+
+            best_idx = np.argmin(fit)
+            assert np.all(x - pop[best_idx] == 0)
+            assert f - fit[best_idx] == 0
+
+        def record_iteration_system(self, recording_requester, data, metadata):
+            pass
+
+        def record_iteration_solver(self, recording_requester, data, metadata):
+            pass
+
+        def record_iteration_problem(self, recording_requester, data, metadata):
+            pass
+
+        def record_derivatives_driver(self, recording_requester, data, metadata):
+            pass
+
+        def record_viewer_data(self, model_viewer_data):
+            pass
+
+    problem.driver.add_recorder(MyRecorder())
+    problem.setup()
+    problem.run_driver()
+

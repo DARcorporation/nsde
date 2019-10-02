@@ -170,6 +170,19 @@ class DifferentialEvolutionDriver(Driver):
         """
         return "DifferentialEvolution"
 
+    def get_population(self):
+        """
+        Get the current DE population and their fitness.
+
+        Returns
+        -------
+        pop : np.array
+            Copy of the current DE population
+        fit : np.array
+            Copy of the current DE population fitness
+        """
+        return np.copy(self._de.pop), np.copy(self._de.fit)
+
     def run(self):
         """
         Execute the differential evolution algorithm.
