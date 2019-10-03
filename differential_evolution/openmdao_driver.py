@@ -1,11 +1,11 @@
-from six import iteritems, itervalues, next
-
+import copy
 import numpy as np
-
 import openmdao
+
 from openmdao.core.driver import Driver, RecordingDebugging
 from openmdao.utils.mpi import MPI
 from openmdao.core.analysis_error import AnalysisError
+from six import iteritems, itervalues, next
 
 try:
     from tqdm import tqdm
@@ -170,18 +170,16 @@ class DifferentialEvolutionDriver(Driver):
         """
         return "DifferentialEvolution"
 
-    def get_population(self):
+    def get_de(self):
         """
-        Get the current DE population and their fitness.
+        Get a copy of the driver's underlying DE class.
 
         Returns
         -------
-        pop : np.array
-            Copy of the current DE population
-        fit : np.array
-            Copy of the current DE population fitness
+        DifferentialEvolution
+            A copy of the driver's underlying DE class
         """
-        return np.copy(self._de.pop), np.copy(self._de.fit)
+        return copy.copy(self._de)
 
     def run(self):
         """
