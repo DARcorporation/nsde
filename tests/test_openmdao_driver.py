@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import numpy as np
 import openmdao.api as om
 import pytest
@@ -10,11 +12,15 @@ def problem():
     dim = 2
 
     prob = om.Problem()
-    prob.model.add_subsystem('indeps', om.IndepVarComp('x', val=np.ones(dim)), promotes=['*'])
-    prob.model.add_subsystem('objf', om.ExecComp('f = sum(x * x)', f=1., x=np.ones(dim)), promotes=['*'])
+    prob.model.add_subsystem(
+        "indeps", om.IndepVarComp("x", val=np.ones(dim)), promotes=["*"]
+    )
+    prob.model.add_subsystem(
+        "objf", om.ExecComp("f = sum(x * x)", f=1.0, x=np.ones(dim)), promotes=["*"]
+    )
 
-    prob.model.add_design_var('x', lower=-100., upper=100.)
-    prob.model.add_objective('f')
+    prob.model.add_design_var("x", lower=-100.0, upper=100.0)
+    prob.model.add_objective("f")
 
     prob.driver = DifferentialEvolutionDriver()
     return prob
@@ -35,8 +41,8 @@ def test_openmdao_driver(problem, mutation, number, crossover, repair, adaptivit
     problem.run_driver()
 
     try:
-        assert np.all(problem['x'] < 1e-3)
-        assert problem['f'][0] < 1e-3
+        assert np.all(problem["x"] < 1e-3)
+        assert problem["f"][0] < 1e-3
     except AssertionError:
         # This is to account for strategies sometimes 'collapsing' prematurely.
         # This is not a failed test, this is a known phenomenon with DE.
@@ -56,19 +62,18 @@ def test_openmdao_driver_recorder(problem):
 
         def record_iteration_driver(self, recording_requester, data, metadata):
             assert isinstance(recording_requester, DifferentialEvolutionDriver)
-            pop, fit = recording_requester.get_population()
+            de = recording_requester.get_de()
             assert "out" in data
             assert "indeps.x" in data["out"]
             assert "objf.f" in data["out"]
 
             x = data["out"]["indeps.x"]
             f = data["out"]["objf.f"]
-            assert x in pop
-            assert f in fit
+            assert x in de.pop
+            assert f in de.fit
 
-            best_idx = np.argmin(fit)
-            assert np.all(x - pop[best_idx] == 0)
-            assert f - fit[best_idx] == 0
+            assert np.all(x - de.best == 0)
+            assert f - de.best_fit == 0
 
         def record_iteration_system(self, recording_requester, data, metadata):
             pass
@@ -88,4 +93,3 @@ def test_openmdao_driver_recorder(problem):
     problem.driver.add_recorder(MyRecorder())
     problem.setup()
     problem.run_driver()
-

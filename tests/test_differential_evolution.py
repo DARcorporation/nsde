@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import numpy as np
 import pytest
 
@@ -18,7 +20,9 @@ def test_differential_evolution(mutation, number, crossover, repair, adaptivity)
     dim = 2
 
     strategy = EvolutionStrategy("/".join([mutation, str(number), crossover, repair]))
-    de = DifferentialEvolution(strategy=strategy, tolx=tol, tolf=tol, adaptivity=adaptivity)
+    de = DifferentialEvolution(
+        strategy=strategy, tolx=tol, tolf=tol, adaptivity=adaptivity
+    )
     de.init(paraboloid, bounds=[(-100, 100)] * dim)
 
     last_generation = None

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Definition of the Differential Evolution algorithm"""
 import numpy as np
 
@@ -5,6 +7,7 @@ try:
     from openmdao.utils.concurrent import concurrent_eval
 except ModuleNotFoundError:
     import warnings
+
     warnings.warn("OpenMDAO is not installed. Concurrent evaluation is not available.")
 
 from .evolution_strategy import EvolutionStrategy
@@ -24,6 +27,7 @@ def mpi_fobj_wrapper(fobj):
     callable
         Wrapped function which, in addition to x, takes the individual's index and returns it along with f
     """
+
     def wrapped(x, ii):
         return fobj(x), ii
 
@@ -81,9 +85,20 @@ class DifferentialEvolution:
         Generation counter
     """
 
-    def __init__(self, strategy=None, mut=0.85, crossp=1., adaptivity=0,
-                 max_gen=1000, tolx=1e-8, tolf=1e-8,
-                 n_pop=None, seed=None, comm=None, model_mpi=None):
+    def __init__(
+        self,
+        strategy=None,
+        mut=0.85,
+        crossp=1.0,
+        adaptivity=0,
+        max_gen=1000,
+        tolx=1e-8,
+        tolf=1e-8,
+        n_pop=None,
+        seed=None,
+        comm=None,
+        model_mpi=None,
+    ):
         self.fobj = None
 
         self.lb, self.ub = None, None
@@ -136,10 +151,10 @@ class DifferentialEvolution:
         pop : None or array_like, optional
             Initial population. If None, it will be created at random.
         """
-        if self.f is None or 0. > self.f > 1.:
+        if self.f is None or 0.0 > self.f > 1.0:
             self.f = 0.85
-        if self.cr is None or 0. > self.cr > 1.:
-            self.cr = 1.
+        if self.cr is None or 0.0 > self.cr > 1.0:
+            self.cr = 1.0
 
         self.fobj = fobj if self.comm is None else mpi_fobj_wrapper(fobj)
         self.lb, self.ub = np.asarray(bounds).T
@@ -235,8 +250,9 @@ class DifferentialEvolution:
                 for j in range(self.comm.size - extra):
                     cases.append(cases[-1])
 
-            results = concurrent_eval(self.fobj, cases, self.comm, allgather=True,
-                                      model_mpi=self.model_mpi)
+            results = concurrent_eval(
+                self.fobj, cases, self.comm, allgather=True, model_mpi=self.model_mpi
+            )
 
             fit = np.full((self.n_pop,), np.inf)
             for result in results:
@@ -272,24 +288,27 @@ class DifferentialEvolution:
                 f_new = np.where(
                     self.rng.uniform(size=self.n_pop) < 0.9,
                     self.f,
-                    self.rng.uniform(size=self.n_pop) * 0.9 + 1
+                    self.rng.uniform(size=self.n_pop) * 0.9 + 1,
                 )
                 cr_new = np.where(
                     self.rng.uniform(size=self.n_pop) < 0.9,
                     self.cr,
-                    self.rng.uniform(size=self.n_pop)
+                    self.rng.uniform(size=self.n_pop),
                 )
 
             for idx in range(self.n_pop):
-                pop_new_norm[idx], _, _ = self.strategy(idx, pop_old_norm, self.fit, f_new, cr_new, self.rng, False)
+                pop_new_norm[idx], _, _ = self.strategy(
+                    idx, pop_old_norm, self.fit, f_new, cr_new, self.rng, False
+                )
         else:
             # Complex adaptivity. Mutate f and cr.
             f_new = np.copy(self.f)
             cr_new = np.copy(self.cr)
 
             for idx in range(self.n_pop):
-                pop_new_norm[idx], f_new[idx], cr_new[idx] = self.strategy(idx, pop_old_norm, self.fit,
-                                                                           self.f, self.cr, self.rng, True)
+                pop_new_norm[idx], f_new[idx], cr_new[idx] = self.strategy(
+                    idx, pop_old_norm, self.fit, self.f, self.cr, self.rng, True
+                )
 
         return self.lb + self.range * np.asarray(pop_new_norm), f_new, cr_new
 

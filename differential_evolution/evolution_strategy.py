@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Definition of the EvolutionStrategy class and related helper functions."""
 import numpy as np
 
@@ -28,7 +30,7 @@ def mutation_helper(n, parent_idx, population, rng):
     idxs = [idx for idx in range(population.shape[0]) if idx != parent_idx]
     idxs = rng.choice(idxs, size=1 + 2 * n, replace=False)
     r = population[idxs]
-    s = np.sum(r[1:-1:2] - r[2:len(r) + 1:2], axis=0)
+    s = np.sum(r[1:-1:2] - r[2 : len(r) + 1 : 2], axis=0)
     return idxs, r, s
 
 
@@ -50,8 +52,18 @@ def rand(n):
         idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
         if self_adaptive:
-            f_mutant = f[idxs[0]] + np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
-            cr_mutant = cr[idxs[0]] + np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
+            f_mutant = f[idxs[0]] + np.sum(
+                [
+                    rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
+                    for i in range(1, n)
+                ]
+            )
+            cr_mutant = cr[idxs[0]] + np.sum(
+                [
+                    rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
+                    for i in range(1, n)
+                ]
+            )
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
@@ -82,8 +94,18 @@ def best(n):
         i_best = np.argmin(fitness)
 
         if self_adaptive:
-            f_mutant = f[i_best] + np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
-            cr_mutant = cr[i_best] + np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
+            f_mutant = f[i_best] + np.sum(
+                [
+                    rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
+                    for i in range(1, n)
+                ]
+            )
+            cr_mutant = cr[i_best] + np.sum(
+                [
+                    rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
+                    for i in range(1, n)
+                ]
+            )
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
@@ -114,12 +136,26 @@ def rand_to_best(n):
         i_best = np.argmin(fitness)
 
         if self_adaptive:
-            f_mutant = f[parent_idx] + \
-                       rng.normal() * 0.5 * (f[i_best] - f[parent_idx]) + \
-                       np.sum([rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i+1]]) for i in range(1, n)])
-            cr_mutant = cr[parent_idx] + \
-                        rng.normal() * 0.5 * (cr[i_best] - cr[parent_idx]) + \
-                        np.sum([rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i+1]]) for i in range(1, n)])
+            f_mutant = (
+                f[parent_idx]
+                + rng.normal() * 0.5 * (f[i_best] - f[parent_idx])
+                + np.sum(
+                    [
+                        rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
+                        for i in range(1, n)
+                    ]
+                )
+            )
+            cr_mutant = (
+                cr[parent_idx]
+                + rng.normal() * 0.5 * (cr[i_best] - cr[parent_idx])
+                + np.sum(
+                    [
+                        rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
+                        for i in range(1, n)
+                    ]
+                )
+            )
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
@@ -233,9 +269,9 @@ def random(mutant, rng):
 class EvolutionStrategy:
     """An evolution strategy such as 'rand/1/exp'"""
 
-    __mutation_strategies__ = {'rand': rand, 'best': best, 'rand-to-best': rand_to_best}
-    __crossover_strategies__ = {'bin': bin, 'exp': exp}
-    __repair_strategies__ = {'clip': clip, 'random': random}
+    __mutation_strategies__ = {"rand": rand, "best": best, "rand-to-best": rand_to_best}
+    __crossover_strategies__ = {"bin": bin, "exp": exp}
+    __repair_strategies__ = {"clip": clip, "random": random}
 
     def __init__(self, designation):
         """Create a evolution strategy from a designation.
@@ -257,18 +293,20 @@ class EvolutionStrategy:
         """
         try:
             self._designation = designation.lower()
-            parts = self._designation.split('/')
+            parts = self._designation.split("/")
             self.mutate = self.__mutation_strategies__[parts[0]](int(parts[1]))
             self.crossover = self.__crossover_strategies__[parts[2]]
             if len(parts) >= 4:
                 self.repair = self.__repair_strategies__[parts[3]]
             else:
                 self.repair = clip
-                self._designation += '/clip'
+                self._designation += "/clip"
         except AttributeError or KeyError or IndexError or ValueError:
             raise ValueError(f"Invalid evolution strategy '{designation}'")
 
-    def __call__(self, parent_idx, population, fitness, f, cr, rng, self_adaptive=False):
+    def __call__(
+        self, parent_idx, population, fitness, f, cr, rng, self_adaptive=False
+    ):
         """Procreate!
 
         Parameters
@@ -293,7 +331,9 @@ class EvolutionStrategy:
         np.array
             A child!
         """
-        mutant, f_mutant, cr_mutant = self.mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive)
+        mutant, f_mutant, cr_mutant = self.mutate(
+            parent_idx, population, fitness, f, cr, rng, self_adaptive
+        )
         mutant = self.crossover(population[parent_idx], mutant, cr_mutant, rng)
         mutant = self.repair(mutant, rng)
         return mutant, f_mutant, cr_mutant
