@@ -193,7 +193,7 @@ class DifferentialEvolution:
             fit_new = self(pop_new)
             self.update(pop_new, fit_new, f_new, cr_new)
 
-            self.dx = np.sum((self.range * (self.worst - self.best)) ** 2) ** 0.5
+            self.dx = np.linalg.norm(self.worst - self.best)
             self.df = np.abs(self.worst_fit - self.best_fit)
             self.generation += 1
 
