@@ -12,7 +12,8 @@ from six import iteritems, itervalues, next
 try:
     from tqdm import tqdm
 except ModuleNotFoundError:
-    tqdm = lambda i, totals: i
+    def tqdm(i, totals):
+        return i
 
 from . import DifferentialEvolution, EvolutionStrategy
 
