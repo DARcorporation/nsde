@@ -11,9 +11,16 @@ setup(
     author="Daniel de Vries",
     author_email="danieldevries6@gmail.com",
     packages=["differential_evolution"],
-    extras_require={"openmdao": ["openmdao>=2.8"]},
-    install_requires=["numpy>=1.17"],
-    tests_require=["openmdao>=2.8", "pytest", "pytest-pep8"],
+    install_requires=[
+        "numpy>=1.17",
+        "openmdao<2.10,>=2.8",
+        "tqdm<5,>=4.32",
+        "six<1.13,>=1.12",
+    ],
+    tests_require=[
+        "pytest",
+        "pytest-pep8",
+    ],
     url="https://github.com/daniel-de-vries/differential-evolution",
     download_url="https://github.com/daniel-de-vries/differential-evolution/archive/v{0}.tar.gz".format(
         __version__
