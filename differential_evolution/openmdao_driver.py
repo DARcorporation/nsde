@@ -192,7 +192,7 @@ class DifferentialEvolutionDriver(Driver):
             The communicator for the Problem model.
         """
         procs_per_model = self.options["procs_per_model"]
-        if MPI and self.options["run_parallel"] and procs_per_model > 1:
+        if MPI and self.options["run_parallel"]:
 
             full_size = comm.size
             size = full_size // procs_per_model
