@@ -256,8 +256,12 @@ class DifferentialEvolution:
 
             fit = np.full((self.n_pop,), np.inf)
             for result in results:
-                (val, ii), _ = result
-                fit[ii] = val
+                retval, err = result
+                if err is not None or retval is None:
+                    raise Exception(err)
+                else:
+                    val, ii = retval
+                    fit[ii] = val
         else:
             fit = [self.fobj(ind) for ind in pop]
         return np.asarray(fit)
