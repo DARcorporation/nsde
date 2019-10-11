@@ -36,13 +36,16 @@ setup(
     ],
     license="MIT License",
     classifiers=[
+        'Development Status :: 4 - Beta',
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
-        "Intended Audience :: Education",
         "License :: OSI Approved :: MIT License",
+        'Natural Language :: English',
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 3.7",
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.7',
     ],
 )
