@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import copy
+import itertools
 import numpy as np
 import openmdao
+import os
 
 from openmdao.core.analysis_error import AnalysisError
 from openmdao.core.driver import Driver, RecordingDebugging
@@ -53,6 +55,12 @@ class DifferentialEvolutionDriver(Driver):
         self._es = None
         self._de = None
 
+        # random state can be set for predictability during testing
+        if "DifferentialEvolutionDriver_seed" in os.environ:
+            self._seed = int(os.environ["DifferentialEvolutionDriver_seed"])
+        else:
+            self._seed = None
+
         # Support for Parallel models.
         self._concurrent_pop_size = 0
         self._concurrent_color = 0
@@ -64,7 +72,23 @@ class DifferentialEvolutionDriver(Driver):
         self.options.declare(
             "strategy",
             default="rand-to-best/1/exp/random",
-            desc="Evolution strategy to use for the differential evolution.",
+            values=[
+                "/".join(strategy)
+                for strategy in itertools.product(
+                    list(EvolutionStrategy.__mutation_strategies__.keys()),
+                    ["1", "2", "3"],
+                    list(EvolutionStrategy.__crossover_strategies__.keys()),
+                    list(EvolutionStrategy.__repair_strategies__.keys()),
+                )
+            ],
+            desc="Evolution strategy to use for the differential evolution. "
+            "An evolution strategy is made up of four parts in fixed order, separated by '/':"
+            " mutation strategy ('rand', 'best', or 'rand-to-best'),"
+            " number of individuals to involve in the mutation (1, 2, or 3),"
+            " crossover strategy ('exp' or 'bin'), and"
+            " repair strategy ('random' or 'clip'). "
+            "A good introduction of these topics can be found here: "
+            "https://pablormier.github.io/2017/09/05/a-tutorial-on-differential-evolution-with-python/",
         )
         self.options.declare(
             "Pm",
@@ -83,7 +107,13 @@ class DifferentialEvolutionDriver(Driver):
             desc="Crossover rate.",
         )
         self.options.declare(
-            "adaptivity", default=2, values=[0, 1, 2], desc="Self-adaptivity setting."
+            "adaptivity",
+            default=2,
+            values=[0, 1, 2],
+            desc="Self-adaptivity setting:"
+            " 0: mutation and crossover rates are fixed (no self-adaptivity);"
+            " 1: mutation and crossover rates are optimized using Monte-Carlo approach; "
+            " 2: mutation and crossover rates are optimized using evolutionary algorithm. ",
         )
         self.options.declare(
             "max_gen", default=1000, desc="Number of generations before termination."
@@ -97,8 +127,8 @@ class DifferentialEvolutionDriver(Driver):
         self.options.declare(
             "pop_size",
             default=0,
-            desc="Number of points in the GA. Set to 0 and it will be computed "
-            "as four times the number of bits.",
+            desc="Number of individuals (points) to use for the optimization. "
+                 "If set to 0, it will be calculated automatically as 5 x dimensionality.",
         )
         self.options.declare(
             "run_parallel",
@@ -172,7 +202,7 @@ class DifferentialEvolutionDriver(Driver):
             tolx=self.options["tolx"],
             tolf=self.options["tolf"],
             n_pop=self.options["pop_size"],
-            seed=None,
+            seed=self._seed,
             comm=comm,
             model_mpi=model_mpi,
         )
@@ -310,8 +340,12 @@ class DifferentialEvolutionDriver(Driver):
                     s += "gen: {:>5g} / {}, ".format(
                         generation.generation, generation.max_gen
                     )
-                s += "f*: {:> 10.4g}, " "dx: {:> 10.4g} " "df: {:> 10.4g}".format(
-                    generation.best_fit, generation.dx, generation.df
+                s += (
+                    "f*: {:> 10.4g}, "
+                    "dx: {:> 10.4g} "
+                    "df: {:> 10.4g}".format(
+                        generation.best_fit, generation.dx, generation.df
+                    )
                 )
                 print(s.replace("\n", ""))
 
@@ -395,10 +429,6 @@ class DifferentialEvolutionDriver(Driver):
         -------
         float
             Objective value
-        bool
-            Success flag, True if successful
-        int
-            Case number, used for identification when run in parallel.
         """
         model = self._problem.model
 

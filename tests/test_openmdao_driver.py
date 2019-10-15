@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import openmdao.api as om
+import os
 import pytest
 
 from differential_evolution import *
 
 
-@pytest.fixture
-def problem():
+def get_problem():
     dim = 2
 
     prob = om.Problem()
@@ -24,6 +24,11 @@ def problem():
 
     prob.driver = DifferentialEvolutionDriver()
     return prob
+
+
+@pytest.fixture
+def problem():
+    return get_problem()
 
 
 @pytest.mark.parametrize("repair", EvolutionStrategy.__repair_strategies__.keys())
@@ -93,3 +98,25 @@ def test_openmdao_driver_recorder(problem):
     problem.driver.add_recorder(MyRecorder())
     problem.setup()
     problem.run_driver()
+
+
+def test_openmdao_driver_seed():
+    x = [None, None]
+    f = [None, None]
+
+    for i in range(2):
+        os.environ["DifferentialEvolutionDriver_seed"] = "1"
+        prob = get_problem()
+        assert prob.driver._seed == 1
+
+        prob.driver.options["max_gen"] = 10
+        prob.setup()
+        prob.run_driver()
+
+        x[i] = prob["x"]
+        f[i] = prob["f"][0]
+
+        prob.cleanup()
+
+    assert np.all(x[0] == x[1])
+    assert f[0] == f[1]
