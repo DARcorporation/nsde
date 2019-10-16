@@ -100,7 +100,7 @@ def test_openmdao_driver_recorder(problem):
     problem.run_driver()
 
 
-def test_openmdao_driver_seed():
+def test_seed_specified_repeatability():
     x = [None, None]
     f = [None, None]
 
@@ -120,3 +120,11 @@ def test_openmdao_driver_seed():
 
     assert np.all(x[0] == x[1])
     assert f[0] == f[1]
+
+
+def test_fixed_population_size(problem):
+    n_pop = 11
+    problem.driver.options["pop_size"] = n_pop
+    problem.setup()
+    problem.run_driver()
+    assert problem.driver._de.n_pop == n_pop

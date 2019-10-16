@@ -37,3 +37,25 @@ def test_differential_evolution(mutation, number, crossover, repair, adaptivity)
         # This is not a failed test, this is a known phenomenon with DE.
         # In this case we just check that one of the two tolerances was triggered.
         assert last_generation.dx < tol or last_generation.df < tol
+
+
+def test_seed_specified_repeatability():
+    x = [None, None]
+
+    for i in range(2):
+        dim = 2
+        de = DifferentialEvolution(seed=11)
+        de.init(paraboloid, bounds=[(-100, 100)] * dim)
+        x[i] = np.copy(de.pop)
+        del de
+
+    assert np.all(x[0] == x[1])
+
+
+def test_fixed_population_size():
+    dim = 2
+    n_pop = 11
+    de = DifferentialEvolution(n_pop=n_pop)
+    de.init(paraboloid, bounds=[(-100, 100)]*dim)
+
+    assert de.pop.shape[0] == n_pop
