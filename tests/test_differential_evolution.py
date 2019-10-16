@@ -52,7 +52,7 @@ def test_seed_specified_repeatability():
     assert np.all(x[0] == x[1])
 
 
-def test_fixed_population_size():
+def test_custom_population_size():
     dim = 2
     n_pop = 11
     de = DifferentialEvolution(n_pop=n_pop)

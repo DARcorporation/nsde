@@ -122,7 +122,7 @@ def test_seed_specified_repeatability():
     assert f[0] == f[1]
 
 
-def test_fixed_population_size(problem):
+def test_custom_population_size(problem):
     n_pop = 11
     problem.driver.options["pop_size"] = n_pop
     problem.setup()
