@@ -57,5 +57,11 @@ def test_custom_population_size():
     n_pop = 11
     de = DifferentialEvolution(n_pop=n_pop)
     de.init(paraboloid, bounds=[(-100, 100)]*dim)
-
     assert de.pop.shape[0] == n_pop
+
+
+def test_zero_population_size():
+    dim = 2
+    de = DifferentialEvolution(n_pop=0)
+    de.init(paraboloid, bounds=[(-100, 100)]*dim)
+    assert de.pop.shape[0] == 5 * dim

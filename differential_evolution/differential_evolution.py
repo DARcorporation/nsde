@@ -166,7 +166,7 @@ class DifferentialEvolution:
             self.n_pop = pop.shape[0]
             self.pop = pop
         else:
-            if self.n_pop is None:
+            if self.n_pop is None or self.n_pop <= 0:
                 self.n_pop = self.n_dim * 5
 
             self.pop = self.rng.uniform(self.lb, self.ub, size=(self.n_pop, self.n_dim))
