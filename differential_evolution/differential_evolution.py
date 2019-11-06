@@ -151,17 +151,21 @@ class DifferentialEvolution:
         pop : None or array_like, optional
             Initial population. If None, it will be created at random.
         """
+        # Set default values for the mutation and crossover parameters
         if self.f is None or 0.0 > self.f > 1.0:
             self.f = 0.85
         if self.cr is None or 0.0 > self.cr > 1.0:
             self.cr = 1.0
 
+        # Prepare the objective function and compute the bounds and variable range
         self.fobj = fobj if self.comm is None else mpi_fobj_wrapper(fobj)
         self.lb, self.ub = np.asarray(bounds).T
         self.range = self.ub - self.lb
 
+        # Compute the number of dimensions
         self.n_dim = len(bounds)
 
+        # Initialize a random population if one is not specified
         if pop is not None:
             self.n_pop = pop.shape[0]
             self.pop = pop
@@ -171,6 +175,7 @@ class DifferentialEvolution:
 
             self.pop = self.rng.uniform(self.lb, self.ub, size=(self.n_pop, self.n_dim))
 
+        # Create random mutation/crossover parameters if self-adaptivity is used
         if self.adaptivity == 0:
             self.f = self.f * np.ones(self.n_pop)
             self.cr = self.cr * np.ones(self.n_pop)
@@ -185,11 +190,14 @@ class DifferentialEvolution:
         if self.comm is not None:
             self.pop, self.f, self.cr = self.comm.bcast((self.pop, self.f, self.cr), root=0)
 
+        # Evaluate population fitness and update the class state
         self.fit = self(self.pop)
         self.update(self.pop, self.fit, self.f, self.cr)
 
+        # Set generation counter to 0
         self.generation = 0
 
+        # Mark class as initialized
         self._is_initialized = True
 
     @property
@@ -210,21 +218,28 @@ class DifferentialEvolution:
             raise RuntimeError("DifferentialEvolution is not yet initialized.")
 
         while self.generation < self.max_gen:
+            # Create a new population and mutation/crossover parameters
             pop_new, f_new, cr_new = self.procreate()
 
             # Ensure all processors have the same updated population and mutation/crossover parameters
             if self.comm is not None:
                 pop_new, f_new, cr_new = self.comm.bcast((pop_new, f_new, cr_new), root=0)
 
+            # Evaluate the fitness of the new population
             fit_new = self(pop_new)
+
+            # Update the class with the new data
             self.update(pop_new, fit_new, f_new, cr_new)
 
+            # Compute spreads and update generation counter
             self.dx = np.linalg.norm(self.worst - self.best)
             self.df = np.abs(self.worst_fit - self.best_fit)
             self.generation += 1
 
+            # Yield the new state
             yield self
 
+            # Check if the tolerances have been reached
             if self.dx < self.tolx:
                 break
             if self.df < self.tolf:
@@ -253,16 +268,19 @@ class DifferentialEvolution:
         if self.comm is not None:
             # Construct run cases
             cases = [((item, ii), None) for ii, item in enumerate(pop)]
+
             # Pad the cases with some dummy cases to make the cases divisible amongst the procs.
             extra = len(cases) % self.comm.size
             if extra > 0:
                 for j in range(self.comm.size - extra):
                     cases.append(cases[-1])
 
+            # Compute the fitness of all individuals in parallel using MPI
             results = concurrent_eval(
                 self.fobj, cases, self.comm, allgather=True, model_mpi=self.model_mpi
             )
 
+            # Gather the results
             fit = np.full((self.n_pop,), np.inf)
             for result in results:
                 retval, err = result
@@ -272,10 +290,13 @@ class DifferentialEvolution:
                     val, ii = retval
                     fit[ii] = val
         else:
-            fit = [self.fobj(ind) for ind in pop]
+            # Evaluate the population in serial
+            fit = np.asarray([self.fobj(ind) for ind in pop])
 
-        fit = np.asarray(fit)
-        return np.where(np.isnan(fit), np.inf, fit)
+        # Turn all NaNs in the fitnesses into infs
+        fit = np.where(np.isnan(fit), np.inf, fit)
+
+        return fit
 
     def procreate(self):
         """
@@ -325,7 +346,8 @@ class DifferentialEvolution:
                     idx, pop_old_norm, self.fit, self.f, self.cr, self.rng, True
                 )
 
-        return self.lb + self.range * np.asarray(pop_new_norm), f_new, cr_new
+        pop_new = self.lb + self.range * np.asarray(pop_new_norm)
+        return pop_new, f_new, cr_new
 
     def update(self, pop_new, fit_new, f_new, cr_new):
         """
