@@ -266,7 +266,9 @@ class DifferentialEvolution:
                     fit[ii] = val
         else:
             fit = [self.fobj(ind) for ind in pop]
-        return np.asarray(fit)
+
+        fit = np.asarray(fit)
+        return np.where(np.isnan(fit), np.inf, fit)
 
     def procreate(self):
         """
