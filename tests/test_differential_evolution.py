@@ -21,7 +21,7 @@ def test_differential_evolution(mutation, number, crossover, repair, adaptivity)
 
     strategy = EvolutionStrategy("/".join([mutation, str(number), crossover, repair]))
     de = DifferentialEvolution(
-        strategy=strategy, tolx=tol, tolf=tol, adaptivity=adaptivity
+        strategy=strategy, tolx=tol, tolf=0, adaptivity=adaptivity
     )
     de.init(paraboloid, bounds=[(-100, 100)] * dim)
 
@@ -30,13 +30,13 @@ def test_differential_evolution(mutation, number, crossover, repair, adaptivity)
         pass
 
     try:
-        assert np.all(last_generation.best < 1e-4 * np.ones_like(last_generation.best))
-        assert last_generation.best_fit < 1e-4
+        assert np.all(last_generation.best < tol)
+        assert last_generation.best_fit < 1e-8
     except AssertionError:
         # This is to account for strategies sometimes 'collapsing' prematurely.
         # This is not a failed test, this is a known phenomenon with DE.
-        # In this case we just check that one of the two tolerances was triggered.
-        assert last_generation.dx < tol or last_generation.df < tol
+        # In this case we just check that one of the tolerances was triggered.
+        assert last_generation.dx < tol or last_generation.generation == last_generation.max_gen
 
 
 def test_seed_specified_repeatability():
@@ -65,3 +65,21 @@ def test_zero_population_size():
     de = DifferentialEvolution(n_pop=0)
     de.init(paraboloid, bounds=[(-100, 100)]*dim)
     assert de.pop.shape[0] == 5 * dim
+
+
+def test_nan_landscape():
+    dim = 10
+
+    def nan_paraboloid(x):
+        if np.dot(x, np.ones_like(x)) < 0.0:
+            return np.nan
+        else:
+            return paraboloid(x)
+
+    de = DifferentialEvolution(tolx=1e-8, tolf=0)
+    de.init(nan_paraboloid, bounds=[(-100, 100)] * dim)
+
+    for gen in de:
+        print(gen.dx)
+
+    assert np.all(np.abs(de.best) < 1e-5)
