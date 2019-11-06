@@ -181,6 +181,10 @@ class DifferentialEvolution:
             self.f = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
             self.cr = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
 
+        # Ensure all processors have the same population and mutation/crossover parameters
+        if self.comm is not None:
+            self.pop, self.f, self.cr = self.comm.bcast((self.pop, self.f, self.cr), root=0)
+
         self.fit = self(self.pop)
         self.update(self.pop, self.fit, self.f, self.cr)
 
@@ -207,6 +211,11 @@ class DifferentialEvolution:
 
         while self.generation < self.max_gen:
             pop_new, f_new, cr_new = self.procreate()
+
+            # Ensure all processors have the same updated population and mutation/crossover parameters
+            if self.comm is not None:
+                pop_new, f_new, cr_new = self.comm.bcast((pop_new, f_new, cr_new), root=0)
+
             fit_new = self(pop_new)
             self.update(pop_new, fit_new, f_new, cr_new)
 
@@ -242,9 +251,7 @@ class DifferentialEvolution:
         """
         # Evaluate generation
         if self.comm is not None:
-            # Use population of rank 0 on all processors
-            pop = self.comm.bcast(pop, root=0)
-
+            # Construct run cases
             cases = [((item, ii), None) for ii, item in enumerate(pop)]
             # Pad the cases with some dummy cases to make the cases divisible amongst the procs.
             extra = len(cases) % self.comm.size
