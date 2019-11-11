@@ -1,3 +1,5 @@
+__version__ = '1.9.4'
+
 from .differential_evolution import DifferentialEvolution
 from .evolution_strategy import EvolutionStrategy
 

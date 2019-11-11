@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import re
+
 from setuptools import setup
 
-exec(open("differential_evolution/version.py").read())
+__version__ = re.findall(
+    r"""__version__ = ["']+([0-9\.]*)["']+""",
+    open('openmdao/__init__.py').read(),
+)[0]
 
 setup(
     name="differential_evolution",
