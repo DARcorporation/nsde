@@ -18,8 +18,7 @@ setup(
         "six<1.13,>=1.12",
     ],
     tests_require=[
-        "pytest",
-        "pytest-pep8",
+        "parameterized",
     ],
     url="https://github.com/daniel-de-vries/differential-evolution",
     download_url="https://github.com/daniel-de-vries/differential-evolution/archive/v{0}.tar.gz".format(
