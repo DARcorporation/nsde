@@ -6,7 +6,7 @@ from setuptools import setup
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open('openmdao/__init__.py').read(),
+    open('differential_evolution/__init__.py').read(),
 )[0]
 
 setup(
