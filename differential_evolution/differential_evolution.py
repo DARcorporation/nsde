@@ -171,7 +171,12 @@ class DifferentialEvolution:
             self.pop = pop
         else:
             if self.n_pop is None or self.n_pop <= 0:
-                self.n_pop = self.n_dim * 5
+                if self.comm is not None:
+                    # If we are running under MPI, expand population to fully exploit all processors
+                    self.n_pop = np.ceil(5 * self.n_dim / self.comm.size) * self.comm.size
+                else:
+                    # Otherwise, as a default, use 5 times the number of dimensions
+                    self.n_pop = self.n_dim * 5
 
             self.pop = self.rng.uniform(self.lb, self.ub, size=(self.n_pop, self.n_dim))
 
