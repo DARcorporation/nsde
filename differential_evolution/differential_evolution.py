@@ -212,17 +212,27 @@ class DifferentialEvolution:
 
     def __iter__(self):
         """
-        Main evolution loop
+        This class is an iterator itself.
 
-        Yields
+        Raises
         ------
-        self
-            A copy of this class at each generation
+        RuntimeError
+            If this class is being used as an iterator before it has been initialized.
         """
         if not self._is_initialized:
             raise RuntimeError("DifferentialEvolution is not yet initialized.")
+        return self
 
-        while self.generation < self.max_gen:
+    def __next__(self):
+        """
+        Main iteration.
+
+        Returns
+        -------
+        DifferentialEvolution
+            The new state at the next generation.
+        """
+        if self.generation < self.max_gen and self.dx > self.tolx and self.df > self.tolf:
             # Create a new population and mutation/crossover parameters
             pop_new, f_new, cr_new = self.procreate()
 
@@ -241,14 +251,10 @@ class DifferentialEvolution:
             self.df = np.abs(self.worst_fit - self.best_fit)
             self.generation += 1
 
-            # Yield the new state
-            yield self
-
-            # Check if the tolerances have been reached
-            if self.dx < self.tolx:
-                break
-            if self.df < self.tolf:
-                break
+            # Return the new state
+            return self
+        else:
+            raise StopIteration
 
     def __call__(self, pop):
         """
