@@ -383,20 +383,18 @@ class DifferentialEvolutionDriver(Driver):
                 )
                 print(s.replace("\n", ""))
 
-            # Pull optimal parameters back into framework and re-run, so that
-            # framework is left in the right final state
-            for name in desvars:
-                i, j = self._desvar_idx[name]
-                val = generation.best[i:j]
-                self.set_design_var(name, val)
+        # Pull optimal parameters back into framework and re-run, so that
+        # framework is left in the right final state
+        for name in desvars:
+            i, j = self._desvar_idx[name]
+            val = de.best[i:j]
+            self.set_design_var(name, val)
 
-            # Record once per generation
-            with RecordingDebugging(self._get_name(), self.iter_count, self) as rec:
-                model.run_solve_nonlinear()
-                rec.abs = 0.0
-                rec.rel = 0.0
-
-            self.iter_count += 1
+        with RecordingDebugging(self._get_name(), self.iter_count, self) as rec:
+            model.run_solve_nonlinear()
+            rec.abs = 0.0
+            rec.rel = 0.0
+        self.iter_count += 1
 
         return False
 
@@ -490,56 +488,62 @@ class DifferentialEvolutionDriver(Driver):
         almost_inf = openmdao.INF_BOUND
 
         # Execute the model
-        try:
-            model.run_solve_nonlinear()
+        with RecordingDebugging(self._get_name(), self.iter_count, self) as rec:
+            self.iter_count += 1
+            try:
+                model.run_solve_nonlinear()
 
-        # Tell the optimizer that this is a bad point.
-        except AnalysisError:
-            model._clear_iprint()
+            # Tell the optimizer that this is a bad point.
+            except AnalysisError:
+                model._clear_iprint()
 
-        obj_values = self.get_objective_values()
-        if is_single_objective:  # Single objective optimization
-            obj = next(itervalues(obj_values))  # First and only key in the dict
-        else:  # Multi-objective optimization with weighted sums
-            weighted_objectives = np.array([])
-            for name, val in iteritems(obj_values):
-                # element-wise multiplication with scalar
-                # takes the average, if an objective is a vector
-                try:
-                    weighted_obj = val * obj_weights[name] / val.size
-                except KeyError:
-                    msg = (
-                        'Name "{}" in "multi_obj_weights" option '
-                        "is not an absolute name of an objective."
-                    )
-                    raise KeyError(msg.format(name))
-                weighted_objectives = np.hstack((weighted_objectives, weighted_obj))
+            obj_values = self.get_objective_values()
+            if is_single_objective:  # Single objective optimization
+                obj = next(itervalues(obj_values))  # First and only key in the dict
+            else:  # Multi-objective optimization with weighted sums
+                weighted_objectives = np.array([])
+                for name, val in iteritems(obj_values):
+                    # element-wise multiplication with scalar
+                    # takes the average, if an objective is a vector
+                    try:
+                        weighted_obj = val * obj_weights[name] / val.size
+                    except KeyError:
+                        msg = (
+                            'Name "{}" in "multi_obj_weights" option '
+                            "is not an absolute name of an objective."
+                        )
+                        raise KeyError(msg.format(name))
+                    weighted_objectives = np.hstack((weighted_objectives, weighted_obj))
 
-            obj = sum(weighted_objectives / sum_weights) ** obj_exponent
+                obj = sum(weighted_objectives / sum_weights) ** obj_exponent
 
-        # Parameters of the penalty method
-        penalty = self.options["penalty_parameter"]
-        exponent = self.options["penalty_exponent"]
+            # Parameters of the penalty method
+            penalty = self.options["penalty_parameter"]
+            exponent = self.options["penalty_exponent"]
 
-        if penalty == 0:
-            fun = obj
-        else:
-            violation = None
-            constraint_violations = np.array([])
-            for name, val in iteritems(self.get_constraint_values()):
-                con = self._cons[name]
-                # The not used fields will either None or a very large number
-                if (con["lower"] is not None) and np.any(con["lower"] > -almost_inf):
-                    diff = val - con["lower"]
-                    violation = np.array([0.0 if d >= 0 else abs(d) for d in diff])
-                elif (con["upper"] is not None) and np.any(con["upper"] < almost_inf):
-                    diff = val - con["upper"]
-                    violation = np.array([0.0 if d <= 0 else abs(d) for d in diff])
-                elif (con["equals"] is not None) and np.any(np.abs(con["equals"]) < almost_inf):
-                    diff = val - con["equals"]
-                    violation = np.absolute(diff)
-                constraint_violations = np.hstack((constraint_violations, violation))
-            fun = obj + penalty * sum(np.power(constraint_violations, exponent))
+            if penalty == 0:
+                fun = obj
+            else:
+                violation = None
+                constraint_violations = np.array([])
+                for name, val in iteritems(self.get_constraint_values()):
+                    con = self._cons[name]
+                    # The not used fields will either None or a very large number
+                    if (con["lower"] is not None) and np.any(con["lower"] > -almost_inf):
+                        diff = val - con["lower"]
+                        violation = np.array([0.0 if d >= 0 else abs(d) for d in diff])
+                    elif (con["upper"] is not None) and np.any(con["upper"] < almost_inf):
+                        diff = val - con["upper"]
+                        violation = np.array([0.0 if d <= 0 else abs(d) for d in diff])
+                    elif (con["equals"] is not None) and np.any(np.abs(con["equals"]) < almost_inf):
+                        diff = val - con["equals"]
+                        violation = np.absolute(diff)
+                    constraint_violations = np.hstack((constraint_violations, violation))
+                fun = obj + penalty * sum(np.power(constraint_violations, exponent))
+            # Record after getting obj to assure they have
+            # been gathered in MPI.
+            rec.abs = 0.0
+            rec.rel = 0.0
 
         # print("Functions calculated")
         # print(x)

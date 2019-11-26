@@ -74,50 +74,6 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
                 self.problem.driver._de.dx < tol or self.problem.driver._de.df < tol
             )
 
-    def test_differential_evolution_driver_recorder(self):
-        from openmdao.recorders.case_recorder import CaseRecorder
-
-        class MyRecorder(CaseRecorder):
-            def record_metadata_system(self, recording_requester):
-                pass
-
-            def record_metadata_solver(self, recording_requester):
-                pass
-
-            def record_iteration_driver(self, recording_requester, data, metadata):
-                assert isinstance(recording_requester, DifferentialEvolutionDriver)
-                de = recording_requester.get_de()
-                assert "out" in data
-                assert "indeps.x" in data["out"]
-                assert "objf.f" in data["out"]
-
-                x = data["out"]["indeps.x"]
-                f = data["out"]["objf.f"]
-                assert x in de.pop
-                assert f in de.fit
-
-                assert np.all(x - de.best == 0)
-                assert f - de.best_fit == 0
-
-            def record_iteration_system(self, recording_requester, data, metadata):
-                pass
-
-            def record_iteration_solver(self, recording_requester, data, metadata):
-                pass
-
-            def record_iteration_problem(self, recording_requester, data, metadata):
-                pass
-
-            def record_derivatives_driver(self, recording_requester, data, metadata):
-                pass
-
-            def record_viewer_data(self, model_viewer_data):
-                pass
-
-        self.problem.driver.add_recorder(MyRecorder())
-        self.problem.setup()
-        self.problem.run_driver()
-
     def test_seed_specified_repeatability(self):
         x = [None, None]
         f = [None, None]
