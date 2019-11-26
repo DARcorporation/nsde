@@ -173,7 +173,7 @@ class DifferentialEvolution:
             if self.n_pop is None or self.n_pop <= 0:
                 if self.comm is not None:
                     # If we are running under MPI, expand population to fully exploit all processors
-                    self.n_pop = np.ceil(5 * self.n_dim / self.comm.size) * self.comm.size
+                    self.n_pop = int(np.ceil(5 * self.n_dim / self.comm.size) * self.comm.size)
                 else:
                     # Otherwise, as a default, use 5 times the number of dimensions
                     self.n_pop = self.n_dim * 5
