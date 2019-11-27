@@ -41,6 +41,22 @@ else:
     rank = MPI.COMM_WORLD.rank
 
 
+def progress_string(de):
+    s = " "
+    if tqdm is None:
+        s += "gen: {:>5g} / {}, ".format(
+            de.generation, de.max_gen
+        )
+    s += (
+        "f*: {:> 10.4g}, "
+        "dx: {:> 10.4g} "
+        "df: {:> 10.4g}".format(
+            de.best_fit, de.dx, de.df
+        )
+    )
+    return s.replace("\n", "")
+
+
 class DifferentialEvolutionDriver(Driver):
     """
     Driver for a differential evolution algorithm.
@@ -205,6 +221,14 @@ class DifferentialEvolutionDriver(Driver):
             default=False,
             desc="Set to true if a progress bar should be shown.",
         )
+        self.options.declare(
+            "generation_callback",
+            default=None,
+            allow_none=True,
+            desc="Callback which will be called for each generation."
+                 "Callable should have a single argument, which will "
+                 "be an instance of the DifferentialEvolution class."
+        )
 
     def _setup_driver(self, problem):
         """
@@ -362,6 +386,10 @@ class DifferentialEvolutionDriver(Driver):
             x0[i:j] = desvar_vals[name]
 
         de.init(self.objective_callback, bounds)
+        if rank == 0:
+            print(progress_string(de))
+        if self.options["generation_callback"] is not None:
+            self.options["generation_callback"](de)
 
         gen_iter = de
         if rank == 0 and self.options["show_progress"] and tqdm is not None:
@@ -369,19 +397,9 @@ class DifferentialEvolutionDriver(Driver):
 
         for generation in gen_iter:
             if rank == 0:
-                s = " "
-                if tqdm is None:
-                    s += "gen: {:>5g} / {}, ".format(
-                        generation.generation, generation.max_gen
-                    )
-                s += (
-                    "f*: {:> 10.4g}, "
-                    "dx: {:> 10.4g} "
-                    "df: {:> 10.4g}".format(
-                        generation.best_fit, generation.dx, generation.df
-                    )
-                )
-                print(s.replace("\n", ""))
+                print(progress_string(generation))
+                if self.options["generation_callback"] is not None:
+                    self.options["generation_callback"](de)
 
         # Pull optimal parameters back into framework and re-run, so that
         # framework is left in the right final state
