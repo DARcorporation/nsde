@@ -202,19 +202,29 @@ class DifferentialEvolutionDriver(Driver):
             "penalty_exponent", default=1.0, desc="Penalty function exponent."
         )
         self.options.declare(
+            "multi_obj_use_nsga2",
+            default=True,
+            desc="If True (default), multi-objective optimization will be handled "
+            "using the non-dominated sorting and crowding distance approach from "
+            "NSGA-II. If False, multi-objective optimizations will be converted to "
+            "single-objective using a weighted sums method."
+        )
+        self.options.declare(
             "multi_obj_weights",
             default={},
             types=dict,
             desc="Weights of objectives for multi-objective optimization."
             "Weights are specified as a dictionary with the absolute names"
             "of the objectives. The same weights for all objectives are assumed, "
-            "if not given.",
+            "if not given. "
+            "This option has no effect if `multi_obj_use_nsga2` is True.",
         )
         self.options.declare(
             "multi_obj_exponent",
             default=1.0,
             lower=0.0,
-            desc="Multi-objective weighting exponent.",
+            desc="Multi-objective weighting exponent. "
+            "This option has no effect if `multi_obj_use_nsga2` is True.",
         )
         self.options.declare(
             "show_progress",
@@ -518,7 +528,9 @@ class DifferentialEvolutionDriver(Driver):
             obj_values = self.get_objective_values()
             if is_single_objective:  # Single objective optimization
                 obj = next(itervalues(obj_values))  # First and only key in the dict
-            else:  # Multi-objective optimization with weighted sums
+            elif self.options["multi_obj_use_nsga2"]:
+                obj = list(itervalues(obj_values))
+            else: # Multi-objective optimization with weighted sums
                 weighted_objectives = np.array([])
                 for name, val in iteritems(obj_values):
                     # element-wise multiplication with scalar

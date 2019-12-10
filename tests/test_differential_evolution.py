@@ -12,75 +12,57 @@ def paraboloid(x):
     return np.sum(x * x)
 
 
-class TestDifferentialEvolution(unittest.TestCase):
-    @parameterized.expand(
-        list(
-            map(
-                lambda t: (
-                        "strategy_"
-                        + "/".join([str(_t) for _t in t[:-1]])
-                        + "_adaptivity_{}".format(t[-1]),
-                ),
-                itertools.product(
-                    list(EvolutionStrategy.__mutation_strategies__.keys()),
-                    [1, 2, 3],
-                    list(EvolutionStrategy.__crossover_strategies__.keys()),
-                    list(EvolutionStrategy.__repair_strategies__.keys()),
-                    [0, 1, 2],
-                ),
-            )
-        )
-    )
-    def test_differential_evolution(self, name):
-        tol = 1e-8
-        dim = 2
+def schaffer_n1(x):
+    return [x ** 2, (x - 2) ** 2]
 
+
+all_strategies = list(
+    map(
+        lambda t: (
+            "strategy_"
+            + "/".join([str(_t) for _t in t[:-1]])
+            + "_adaptivity_{}".format(t[-1]),
+        ),
+        itertools.product(
+            list(EvolutionStrategy.__mutation_strategies__.keys()),
+            [1, 2],
+            list(EvolutionStrategy.__crossover_strategies__.keys()),
+            list(EvolutionStrategy.__repair_strategies__.keys()),
+            [0, 1, 2],
+        ),
+    )
+)
+
+
+class TestSingleObjective(unittest.TestCase):
+
+    def _test(self, fobj, x_opt, f_opt, name):
         strategy, adaptivity = name.split("_")[1::2]
         strategy = EvolutionStrategy(strategy)
         de = DifferentialEvolution(
-            strategy=strategy, tolx=tol, tolf=0, adaptivity=int(adaptivity)
+            strategy=strategy, tolf=0, adaptivity=int(adaptivity)
         )
-        de.init(paraboloid, bounds=[(-100, 100)] * dim)
+        de.init(fobj, bounds=[(-100, 100)] * 2)
 
-        last_generation = None
-        for last_generation in de:
+        for _ in de:
             pass
 
-        try:
-            self.assertTrue(np.all(last_generation.best < tol))
-            self.assertAlmostEqual(last_generation.best_fit, 0, 7)
-        except AssertionError:
-            # This is to account for strategies sometimes 'collapsing' prematurely.
-            # This is not a failed test, this is a known phenomenon with DE.
-            # In this case we just check that one of the tolerances was triggered.
-            self.assertTrue(
-                last_generation.dx < tol or last_generation.generation == last_generation.max_gen
-            )
+        x_close = np.all(np.abs(de.best - x_opt) < 1e-2)
+        if not x_close and adaptivity == 0 or adaptivity == 1:
+            self.assertTrue(de.dx <= de.tolx or de.generation >= de.max_gen)
+        else:
+            self.assertTrue(x_close)
+            self.assertAlmostEqual(de.best_fit[0], f_opt, 2)
 
-    def test_seed_specified_repeatability(self):
-        x = [None, None]
+    @parameterized.expand(all_strategies)
+    def test_unconstrained(self, name):
+        self._test(paraboloid, 0, 0, name)
 
-        for i in range(2):
-            dim = 2
-            de = DifferentialEvolution(seed=11)
-            de.init(paraboloid, bounds=[(-100, 100)] * dim)
-            x[i] = np.copy(de.pop)
-            del de
-
-        self.assertTrue(np.all(x[0] == x[1]))
-
-    def test_custom_population_size(self):
-        dim = 2
-        n_pop = 11
-        de = DifferentialEvolution(n_pop=n_pop)
-        de.init(paraboloid, bounds=[(-100, 100)]*dim)
-        self.assertEqual(de.pop.shape[0], n_pop)
-
-    def test_zero_population_size(self):
-        dim = 2
-        de = DifferentialEvolution(n_pop=0)
-        de.init(paraboloid, bounds=[(-100, 100)]*dim)
-        self.assertEqual(de.pop.shape[0], 5 * dim)
+    @parameterized.expand(all_strategies)
+    def test_constrained(self, name):
+        def fobj(x):
+            return paraboloid(x), 1 - x
+        self._test(fobj, 1, 2, name)
 
     def test_nan_landscape(self):
         dim = 10
@@ -98,3 +80,58 @@ class TestDifferentialEvolution(unittest.TestCase):
             pass
 
         self.assertTrue(np.all(np.abs(de.best) < 1e-5))
+
+
+class TestMultiObjective(unittest.TestCase):
+
+    @parameterized.expand(all_strategies)
+    def test_multi_objective(self, name):
+        strategy, adaptivity = name.split("_")[1::2]
+        strategy = EvolutionStrategy(strategy)
+        de = DifferentialEvolution(
+            strategy=strategy, adaptivity=int(adaptivity)
+        )
+        de.init(schaffer_n1, bounds=[(-100, 100)])
+
+        for _ in de:
+            pass
+
+        pareto = de.fit[de.fronts[0]]
+        pareto = pareto[np.argsort(pareto[:, 0])]
+
+        f1 = pareto[:, 0]
+        f2 = (f1 ** 0.5 - 2) ** 2
+
+        e = pareto[:, 1] - f2
+        e_rel = e / np.abs(f2)
+        rms = np.mean(e_rel ** 2) ** 0.5
+
+        self.assertLess(rms, 1e-3)
+
+
+class TestLogic(unittest.TestCase):
+
+    def test_seed_specified_repeatability(self):
+        x = [None, None]
+
+        for i in range(2):
+            dim = 2
+            de = DifferentialEvolution(seed=11)
+            de.init(paraboloid, bounds=[(-100, 100)] * dim)
+            x[i] = np.copy(de.pop)
+            del de
+
+        self.assertTrue(np.all(x[0] == x[1]))
+
+    def test_custom_population_size(self):
+        dim = 2
+        n_pop = 11
+        de = DifferentialEvolution(n_pop=n_pop)
+        de.init(paraboloid, bounds=[(-100, 100)] * dim)
+        self.assertEqual(de.pop.shape[0], n_pop)
+
+    def test_zero_population_size(self):
+        dim = 2
+        de = DifferentialEvolution(n_pop=0)
+        de.init(paraboloid, bounds=[(-100, 100)] * dim)
+        self.assertEqual(de.pop.shape[0], 5 * dim)

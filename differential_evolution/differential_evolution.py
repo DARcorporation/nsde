@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Definition of the Differential Evolution algorithm"""
 import numpy as np
+import nsga2_utils as nsga2
 
 try:
     from openmdao.utils.concurrent import concurrent_eval
@@ -75,6 +76,8 @@ class DifferentialEvolution:
         List of the individuals' chromosomes making up the current population
     fit : np.array
         Fitness of the individuals in the population
+    con : np.array
+        Constraint violations of the individuals in the population
     best_idx, worst_idx : int
         Index of the best and worst individuals of the population
     best, worst : np.array
@@ -112,6 +115,8 @@ class DifferentialEvolution:
         self.tolf = tolf
 
         self.n_dim = 0
+        self.n_obj = 0
+        self.n_con = 0
         self.n_pop = n_pop
 
         self.rng = np.random.default_rng(seed)
@@ -129,6 +134,8 @@ class DifferentialEvolution:
 
         self.pop = None
         self.fit = None
+        self.con = None
+        self.fronts = None
         self.best_idx, self.worst_idx = 0, 0
         self.best, self.worst = None, None
         self.best_fit, self.worst_fit = 0, 0
@@ -165,39 +172,80 @@ class DifferentialEvolution:
         # Compute the number of dimensions
         self.n_dim = len(bounds)
 
-        # Initialize a random population if one is not specified
+        def create_f_cr(adaptivity, f, cr, n, rng):
+            # Create random mutation/crossover parameters if self-adaptivity is used
+            if adaptivity == 0:
+                f = f * np.ones(n)
+                cr = cr * np.ones(n)
+            elif adaptivity == 1:
+                f = rng.uniform(size=n) * 0.9 + 0.1
+                cr = rng.uniform(size=n)
+            elif adaptivity == 2:
+                f = rng.uniform(size=n) * 0.15 + 0.5
+                cr = rng.uniform(size=n) * 0.15 + 0.5
+            return f, cr
+
+        adjust_pop = False
         if pop is not None:
             self.n_pop = pop.shape[0]
             self.pop = pop
+            self.f, self.cr = create_f_cr(
+                self.adaptivity, self.f, self.cr, self.n_pop, self.rng
+            )
         else:
             if self.n_pop is None or self.n_pop <= 0:
-                if self.comm is not None:
-                    # If we are running under MPI, expand population to fully exploit all processors
-                    self.n_pop = int(np.ceil(5 * self.n_dim / self.comm.size) * self.comm.size)
-                else:
-                    # Otherwise, as a default, use 5 times the number of dimensions
-                    self.n_pop = self.n_dim * 5
-
-            self.pop = self.rng.uniform(self.lb, self.ub, size=(self.n_pop, self.n_dim))
-
-        # Create random mutation/crossover parameters if self-adaptivity is used
-        if self.adaptivity == 0:
-            self.f = self.f * np.ones(self.n_pop)
-            self.cr = self.cr * np.ones(self.n_pop)
-        elif self.adaptivity == 1:
-            self.f = self.rng.uniform(size=self.n_pop) * 0.9 + 0.1
-            self.cr = self.rng.uniform(size=self.n_pop)
-        elif self.adaptivity == 2:
-            self.f = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
-            self.cr = self.rng.uniform(size=self.n_pop) * 0.15 + 0.5
+                self.pop = self.rng.uniform(self.lb, self.ub, size=(1, self.n_dim))
+                adjust_pop = True
+                self.n_pop = 1
+            else:
+                self.pop = self.rng.uniform(
+                    self.lb, self.ub, size=(self.n_pop, self.n_dim)
+                )
+                self.f, self.cr = create_f_cr(
+                    self.adaptivity, self.f, self.cr, self.n_pop, self.rng
+                )
 
         # Ensure all processors have the same population and mutation/crossover parameters
         if self.comm is not None:
-            self.pop, self.f, self.cr = self.comm.bcast((self.pop, self.f, self.cr), root=0)
+            self.pop, self.f, self.cr = self.comm.bcast(
+                (self.pop, self.f, self.cr), root=0
+            )
 
-        # Evaluate population fitness and update the class state
-        self.fit = self(self.pop)
-        self.update(self.pop, self.fit, self.f, self.cr)
+        self.fit, self.con = self(self.pop)
+
+        self.n_obj = self.fit.shape[1]
+        if self.con is not None:
+            self.n_con = self.con.shape[1]
+
+        if adjust_pop:
+            self.n_pop = 5 * self.n_dim * self.n_obj
+
+            # If we are running under MPI, expand population to fully exploit all processors
+            if self.comm is not None:
+                self.n_pop = int(
+                    np.ceil(self.n_pop / self.comm.size) * self.comm.size
+                )
+
+            self.pop = np.concatenate(
+                (
+                    self.pop,
+                    self.rng.uniform(
+                        self.lb, self.ub, size=(self.n_pop - 1, self.n_dim)
+                    ),
+                )
+            )
+            self.f, self.cr = create_f_cr(
+                self.adaptivity, self.f, self.cr, self.n_pop, self.rng
+            )
+
+            if self.comm is not None:
+                self.pop, self.f, self.cr = self.comm.bcast(
+                    (self.pop, self.f, self.cr), root=0
+                )
+
+            self.fit, self.con = self(self.pop)
+
+        self.update()
 
         # Set generation counter to 0
         self.generation = 0
@@ -232,23 +280,34 @@ class DifferentialEvolution:
         DifferentialEvolution
             The new state at the next generation.
         """
-        if self.generation < self.max_gen and self.dx > self.tolx and self.df > self.tolf:
+        if (
+            self.generation < self.max_gen
+            and self.dx > self.tolx
+            and self.df > self.tolf
+        ):
             # Create a new population and mutation/crossover parameters
             pop_new, f_new, cr_new = self.procreate()
 
             # Ensure all processors have the same updated population and mutation/crossover parameters
             if self.comm is not None:
-                pop_new, f_new, cr_new = self.comm.bcast((pop_new, f_new, cr_new), root=0)
+                pop_new, f_new, cr_new = self.comm.bcast(
+                    (pop_new, f_new, cr_new), root=0
+                )
 
             # Evaluate the fitness of the new population
-            fit_new = self(pop_new)
+            fit_new, con_new = self(pop_new)
 
             # Update the class with the new data
-            self.update(pop_new, fit_new, f_new, cr_new)
+            self.update(pop_new, fit_new, con_new, f_new, cr_new)
 
             # Compute spreads and update generation counter
-            self.dx = np.linalg.norm(self.worst - self.best)
-            self.df = np.abs(self.worst_fit - self.best_fit)
+            if self.n_obj == 1:
+                self.dx = np.linalg.norm(self.worst - self.best)
+                self.df = np.abs(self.worst_fit - self.best_fit)
+            else:
+                # TODO: Find a way to measure convergence for pareto based optimization
+                self.dx = np.inf
+                self.df = np.inf
             self.generation += 1
 
             # Return the new state
@@ -267,14 +326,34 @@ class DifferentialEvolution:
 
         Returns
         -------
-        np.array
-            Fitness of the inviduals in the given population
+        fit : np.array
+            Fitness of the individuals in the given population
+        con : np.array or None
+            Constraint violations of the individuals in the given population if present. None otherwise.
 
         Notes
         -----
         If this class has an MPI communicator the individuals will be evaluated in parallel.
         Otherwise function evaluation will be serial.
         """
+        if self.is_initialized:
+            fit = np.empty((self.n_pop, self.n_obj))
+            con = None if self.n_con is None else np.empty((self.n_pop, self.n_con))
+        else:
+            fit = pop.shape[0] * [None]
+            con = None
+
+        def handle_result(_v, _i, _fit, _con):
+            if isinstance(_v, tuple):
+                _fit[_i] = np.asarray(_v[0])
+                c = np.asarray(_v[1])
+                if _con is None:
+                    _con = np.empty((pop.shape[0], c.size))
+                _con[_i] = c
+            else:
+                _fit[_i] = _v
+            return _fit, _con
+
         # Evaluate generation
         if self.comm is not None:
             # Construct run cases
@@ -292,22 +371,23 @@ class DifferentialEvolution:
             )
 
             # Gather the results
-            fit = np.full((self.n_pop,), np.inf)
             for result in results:
                 retval, err = result
                 if err is not None or retval is None:
                     raise Exception(err)
                 else:
-                    val, ii = retval
-                    fit[ii] = val
+                    fit, con = handle_result(*retval, fit, con)
         else:
             # Evaluate the population in serial
-            fit = np.asarray([self.fobj(ind) for ind in pop])
+            for idx, ind in enumerate(pop):
+                val = self.fobj(ind)
+                fit, con = handle_result(val, idx, fit, con)
 
         # Turn all NaNs in the fitnesses into infs
-        fit = np.where(np.isnan(fit), np.inf, fit)
-
-        return fit
+        fit = np.reshape(np.where(np.isnan(fit), np.inf, fit), (pop.shape[0], -1))
+        if con is not None:
+            con = np.reshape(np.where(np.isnan(con), np.inf, con), (pop.shape[0], -1))
+        return fit, con
 
     def procreate(self):
         """
@@ -345,7 +425,14 @@ class DifferentialEvolution:
 
             for idx in range(self.n_pop):
                 pop_new_norm[idx], _, _ = self.strategy(
-                    idx, pop_old_norm, self.fit, f_new, cr_new, self.rng, False
+                    idx,
+                    pop_old_norm,
+                    self.fit,
+                    self.fronts,
+                    f_new,
+                    cr_new,
+                    self.rng,
+                    False,
                 )
         else:
             # Complex adaptivity. Mutate f and cr.
@@ -354,25 +441,34 @@ class DifferentialEvolution:
 
             for idx in range(self.n_pop):
                 pop_new_norm[idx], f_new[idx], cr_new[idx] = self.strategy(
-                    idx, pop_old_norm, self.fit, self.f, self.cr, self.rng, True
+                    idx,
+                    pop_old_norm,
+                    self.fit,
+                    self.fronts,
+                    self.f,
+                    self.cr,
+                    self.rng,
+                    True,
                 )
 
         pop_new = self.lb + self.range * np.asarray(pop_new_norm)
         return pop_new, f_new, cr_new
 
-    def update(self, pop_new, fit_new, f_new, cr_new):
+    def update(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
         """
         Update the population (and f/cr if self-adaptive) and identify the new best and worst individuals.
 
         Parameters
         ----------
-        pop_new : np.array
+        pop_new : np.array or None, optional
             Proposed new population resulting from procreation
-        fit_new : np.array
+        fit_new : np.array or None, optional
             Fitness of the individuals in the new population
-        f_new : np.array
+        con_new : np.array or None, optional
+            Constraint violations of the individuals in the new population
+        f_new : np.array or None, optional
             New set of mutation rates
-        cr_new : np.array
+        cr_new : np.array or None, optional
             New set of crossover probabilities
 
         Notes
@@ -381,18 +477,95 @@ class DifferentialEvolution:
         Mutation rate and crossover probabilities will only be replaced if self-adaptivity is turned on and if their
         corresponding individuals have improved fitness.
         """
-        improved_idxs = np.argwhere(fit_new <= self.fit)
-        self.pop[improved_idxs] = pop_new[improved_idxs]
-        self.fit[improved_idxs] = fit_new[improved_idxs]
+        if self.n_obj == 1:
+            self._update_single(pop_new, fit_new, con_new, f_new, cr_new)
+        else:
+            self._update_multi(pop_new, fit_new, con_new, f_new, cr_new)
 
-        self.best_idx = np.argmin(self.fit)
-        self.best = self.pop[self.best_idx]
-        self.best_fit = self.fit[self.best_idx]
+        if self.n_obj == 1:
+            self.best_idx = np.argmin(self.fit)
+            self.best = self.pop[self.best_idx]
+            self.best_fit = self.fit[self.best_idx]
 
-        self.worst_idx = np.argmax(self.fit)
-        self.worst = self.pop[self.worst_idx]
-        self.worst_fit = self.fit[self.worst_idx]
+            self.worst_idx = np.argmax(self.fit)
+            self.worst = self.pop[self.worst_idx]
+            self.worst_fit = self.fit[self.worst_idx]
+        else:
+            # TODO
+            pass
+
+    def _update_single(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
+        if (
+                pop_new is not None
+                and fit_new is not None
+                and f_new is not None
+                and cr_new is not None
+        ):
+            if self.n_con:
+                con_tol = 1e-6
+                improved_indices = []
+                for i in range(self.n_pop):
+                    f1 = np.all(con_new[i] <= con_tol)
+                    f2 = np.all(self.con[i] <= con_tol)
+                    if f1 and f2:
+                        if fit_new[i] <= self.fit[i]:
+                            improved_indices += [i]
+                    elif f1 and not f2:
+                        improved_indices += [i]
+                    elif not f1 and not f2:
+                        if (
+                                np.sum(np.where(con_new[i] > con_tol, con_new, 0.0)) <=
+                                np.sum(np.where(self.con[i] > con_tol, self.con, 0.0))
+                        ):
+                            improved_indices += [i]
+
+                self.con[improved_indices] = con_new[improved_indices]
+            else:
+                improved_indices = np.argwhere(fit_new <= self.fit)
+
+            self.pop[improved_indices] = pop_new[improved_indices]
+            self.fit[improved_indices] = fit_new[improved_indices]
+
+            if self.adaptivity != 0:
+                self.f[improved_indices] = f_new[improved_indices]
+                self.cr[improved_indices] = cr_new[improved_indices]
+
+    def _update_multi(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
+        if (
+                pop_new is not None
+                and fit_new is not None
+                and f_new is not None
+                and cr_new is not None
+        ):
+            self.pop = np.concatenate((self.pop, pop_new))
+            self.fit = np.concatenate((self.fit, fit_new))
+            if self.n_con:
+                self.con = np.concatenate((self.con, con_new))
+
+            if self.adaptivity != 0:
+                self.f = np.concatenate((self.f, f_new))
+                self.cr = np.concatenate((self.cr, cr_new))
+
+        if self.n_con:
+            fronts = nsga2.nonDominatedSorting(self.fit, self.con, self.n_pop)
+        else:
+            fronts = nsga2.nonDominatedSorting(self.fit, self.n_pop)
+        fronts[-1] = np.asarray(fronts[-1])[
+            nsga2.crowdingDistanceSorting(self.fit[fronts[-1]])[
+            : (self.n_pop - sum(len(f) for f in fronts[:-1]))
+            ]
+        ].tolist()
+        new_idxs = []
+        for front in fronts:
+            new_idxs += front
+
+        self.fronts = [list(range(i, i + len(f))) for i, f in enumerate(fronts)]
+
+        self.pop = self.pop[new_idxs]
+        self.fit = self.fit[new_idxs]
+        if self.n_con:
+            self.con = self.con[new_idxs]
 
         if self.adaptivity != 0:
-            self.f[improved_idxs] = f_new[improved_idxs]
-            self.cr[improved_idxs] = cr_new[improved_idxs]
+            self.f = self.f[new_idxs]
+            self.cr = self.cr[new_idxs]

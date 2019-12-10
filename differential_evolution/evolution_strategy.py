@@ -48,7 +48,7 @@ def rand(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+    def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
         idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
         if self_adaptive:
@@ -88,10 +88,13 @@ def best(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+    def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
         idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
-        i_best = np.argmin(fitness)
+        if fronts is None:
+            i_best = np.argmin(fitness)
+        else:
+            i_best = rng.choice(fronts[0])
 
         if self_adaptive:
             f_mutant = f[i_best] + np.sum(
@@ -130,10 +133,13 @@ def rand_to_best(n):
         Mutation function
     """
 
-    def mutate(parent_idx, population, fitness, f, cr, rng, self_adaptive):
+    def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
         idxs, r, s = mutation_helper(n, parent_idx, population, rng)
 
-        i_best = np.argmin(fitness)
+        if fronts is None:
+            i_best = np.argmin(fitness)
+        else:
+            i_best = rng.choice(fronts[0])
 
         if self_adaptive:
             f_mutant = (
@@ -305,7 +311,7 @@ class EvolutionStrategy:
             raise ValueError(f"Invalid evolution strategy '{designation}'")
 
     def __call__(
-        self, parent_idx, population, fitness, f, cr, rng, self_adaptive=False
+        self, parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive=False
     ):
         """Procreate!
 
@@ -317,6 +323,8 @@ class EvolutionStrategy:
             List of individuals making up the population
         fitness : array_like
             Fitness of the individuals in the population
+        fronts : list of lists of ints or None
+            List the indices of individuals for each pareto front or None if single-objective
         f : float or array_like
             Mutation rate
         cr : float or array_like
@@ -332,7 +340,7 @@ class EvolutionStrategy:
             A child!
         """
         mutant, f_mutant, cr_mutant = self.mutate(
-            parent_idx, population, fitness, f, cr, rng, self_adaptive
+            parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive
         )
         mutant = self.crossover(population[parent_idx], mutant, cr_mutant, rng)
         mutant = self.repair(mutant, rng)

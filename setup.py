@@ -21,6 +21,7 @@ setup(
         "openmdao<2.10,>=2.8",
         "tqdm<5,>=4.32",
         "six<1.13,>=1.12",
+        "nsga2-utils==0.0.5",
     ],
     tests_require=[
         "parameterized",

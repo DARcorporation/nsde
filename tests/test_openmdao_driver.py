@@ -11,6 +11,23 @@ from parameterized import parameterized
 
 from differential_evolution import *
 
+all_strategies = list(
+            map(
+                lambda t: (
+                    "strategy_"
+                    + "/".join([str(_t) for _t in t[:-1]])
+                    + "_adaptivity_{}".format(t[-1]),
+                ),
+                itertools.product(
+                    list(EvolutionStrategy.__mutation_strategies__.keys()),
+                    [1, 2, 3],
+                    list(EvolutionStrategy.__crossover_strategies__.keys()),
+                    list(EvolutionStrategy.__repair_strategies__.keys()),
+                    [0, 1, 2],
+                ),
+            )
+        )
+
 
 class TestDifferentialEvolutionDriver(unittest.TestCase):
     def setUp(self):
@@ -36,24 +53,7 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
     def tearDown(self):
         self.problem.cleanup()
 
-    @parameterized.expand(
-        list(
-            map(
-                lambda t: (
-                    "strategy_"
-                    + "/".join([str(_t) for _t in t[:-1]])
-                    + "_adaptivity_{}".format(t[-1]),
-                ),
-                itertools.product(
-                    list(EvolutionStrategy.__mutation_strategies__.keys()),
-                    [1, 2, 3],
-                    list(EvolutionStrategy.__crossover_strategies__.keys()),
-                    list(EvolutionStrategy.__repair_strategies__.keys()),
-                    [0, 1, 2],
-                ),
-            )
-        )
-    )
+    @parameterized.expand(all_strategies)
     def test_differential_evolution_driver(self, name):
         tol = 1e-8
 
@@ -127,6 +127,51 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
 
         self.assertTrue(np.all(np.abs(self.problem["x"] - 1.0) <= 1e-4))
         self.assertAlmostEqual(self.problem["f"][0], self.dim, 4)
+
+
+class TestMultiObjective(unittest.TestCase):
+    def setUp(self):
+        os.environ["DifferentialEvolutionDriver_seed"] = "11"
+
+        prob = om.Problem()
+        prob.model.add_subsystem(
+            "indeps", om.IndepVarComp("x", val=np.ones(self.dim)), promotes=["*"]
+        )
+        prob.model.add_subsystem(
+            "objf",
+            om.ExecComp("f = [x ** 2, (x - 2) ** 2]", f=[1.0, 1.0], x=1.0),
+            promotes=["*"],
+        )
+
+        prob.model.add_design_var("x", lower=-100.0, upper=100.0)
+        prob.model.add_objective("f")
+
+        prob.driver = DifferentialEvolutionDriver()
+        self.problem = prob
+
+    def tearDown(self):
+        self.problem.cleanup()
+
+    @parameterized.expand(all_strategies)
+    def test_differential_evolution_driver(self, name):
+        tol = 1e-8
+
+        strategy, adaptivity = name.split("_")[1::2]
+        self.problem.driver.options["strategy"] = strategy
+        self.problem.driver.options["adaptivity"] = int(adaptivity)
+        self.problem.setup()
+        self.problem.run_driver()
+
+        try:
+            self.assertTrue(np.all(self.problem["x"] < 1e-3))
+            self.assertLess(self.problem["f"][0], 1e-3)
+        except self.failureException:
+            # This is to account for strategies sometimes 'collapsing' prematurely.
+            # This is not a failed test, this is a known phenomenon with DE.
+            # In this case we just check that one of the two tolerances was triggered.
+            self.assertTrue(
+                self.problem.driver._de.dx < tol or self.problem.driver._de.df < tol
+            )
 
 
 if __name__ == "__main__":
