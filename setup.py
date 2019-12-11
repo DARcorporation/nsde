@@ -12,7 +12,7 @@ __version__ = re.findall(
 setup(
     name="nsde",
     version=__version__,
-    description="Non-dominated Sorting Differential Evolution Algorithm",
+    description="Non-dominated Sorting Differential Evolution (NSDE) Algorithm",
     author="Daniel de Vries",
     author_email="danieldevries6@gmail.com",
     packages=["nsde"],

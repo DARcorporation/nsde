@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Driver for a differential evolution algorithm.
+Driver for the NSDE algorithm.
 
 This driver uses the differential_evolution Python package to provide the logic of the main
 differential evolution algorithms, developed by D. de Vries.
@@ -25,7 +25,7 @@ except ModuleNotFoundError:
         return i
 
 
-from nsde import DifferentialEvolution, EvolutionStrategy
+from nsde import NSDE, EvolutionStrategy
 
 if not MPI:
     rank = 0
@@ -47,9 +47,9 @@ def progress_string(de):
     return s.replace("\n", "")
 
 
-class DifferentialEvolutionDriver(Driver):
+class NSDEDriver(Driver):
     """
-    Driver for a differential evolution algorithm.
+    Driver for the NSDE algorithm.
 
     Attributes
     ----------
@@ -57,7 +57,7 @@ class DifferentialEvolutionDriver(Driver):
         Number of points to run concurrently when model is a parallel one.
     _concurrent_color : int
         Color of current rank when running a parallel model.
-    _de : DifferentialEvolution
+    _de : NSDE
         Differential evolution algorithm.
     _desvar_idx : dict
         Keeps track of the indices for each desvar, since GeneticAlgorithm sees an array of
@@ -70,14 +70,14 @@ class DifferentialEvolutionDriver(Driver):
 
     def __init__(self, **kwargs):
         """
-        Initialize the DifferentialEvolution driver.
+        Initialize the NSDE driver.
 
         Parameters
         ----------
         **kwargs : dict of keyword arguments
             Keyword arguments that will be mapped into the Driver options.
         """
-        super(DifferentialEvolutionDriver, self).__init__(**kwargs)
+        super(NSDEDriver, self).__init__(**kwargs)
 
         # What we support
         self.supports["inequality_constraints"] = True
@@ -96,8 +96,8 @@ class DifferentialEvolutionDriver(Driver):
         self._de = None
 
         # random state can be set for predictability during testing
-        if "DifferentialEvolutionDriver_seed" in os.environ:
-            self._seed = int(os.environ["DifferentialEvolutionDriver_seed"])
+        if "NSDEDriver_seed" in os.environ:
+            self._seed = int(os.environ["NSDEDriver_seed"])
         else:
             self._seed = None
 
@@ -193,7 +193,7 @@ class DifferentialEvolutionDriver(Driver):
             allow_none=True,
             desc="Callback which will be called for each generation."
             "Callable should have a single argument, which will "
-            "be an instance of the DifferentialEvolution class.",
+            "be an instance of the NSDE class.",
         )
 
     def _setup_driver(self, problem):
@@ -207,7 +207,7 @@ class DifferentialEvolutionDriver(Driver):
         problem : <Problem>
             Pointer to the containing problem.
         """
-        super(DifferentialEvolutionDriver, self)._setup_driver(problem)
+        super(NSDEDriver, self)._setup_driver(problem)
 
         model_mpi = None
         comm = self._problem.comm
@@ -217,7 +217,7 @@ class DifferentialEvolutionDriver(Driver):
             comm = None
 
         self._es = EvolutionStrategy(self.options["strategy"])
-        self._de = DifferentialEvolution(
+        self._de = NSDE(
             strategy=self._es,
             mut=self.options["Pm"],
             crossp=self.options["Pc"],
@@ -282,7 +282,7 @@ class DifferentialEvolutionDriver(Driver):
         str
             Name of current Driver.
         """
-        return "DifferentialEvolution"
+        return "NSDE"
 
     def get_de(self):
         """
@@ -290,7 +290,7 @@ class DifferentialEvolutionDriver(Driver):
 
         Returns
         -------
-        DifferentialEvolution
+        NSDE
             A copy of the driver's underlying DE class
         """
         return copy.copy(self._de)

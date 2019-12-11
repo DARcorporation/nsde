@@ -45,7 +45,7 @@ class TestSingleObjective(unittest.TestCase):
     def _test(self, fobj, x_opt, f_opt, name):
         strategy, adaptivity = name.split("_")[1::2]
         strategy = EvolutionStrategy(strategy)
-        de = DifferentialEvolution(
+        de = NSDE(
             strategy=strategy, tolf=0, adaptivity=int(adaptivity)
         )
         de.init(fobj, bounds=[(-100, 100)] * 2)
@@ -79,7 +79,7 @@ class TestSingleObjective(unittest.TestCase):
             else:
                 return paraboloid(x)
 
-        de = DifferentialEvolution(tolx=1e-8, tolf=0)
+        de = NSDE(tolx=1e-8, tolf=0)
         de.init(nan_paraboloid, bounds=[(-100, 100)] * dim)
 
         for _ in de:
@@ -94,7 +94,7 @@ class TestMultiObjective(unittest.TestCase):
     def test_schaffer_n1(self, name):
         strategy, adaptivity = name.split("_")[1::2]
         strategy = EvolutionStrategy(strategy)
-        de = DifferentialEvolution(
+        de = NSDE(
             strategy=strategy, adaptivity=int(adaptivity)
         )
         de.init(schaffer_n1, bounds=[(-100, 100)])
@@ -115,7 +115,7 @@ class TestMultiObjective(unittest.TestCase):
         self.assertLess(rms, 1e-3)
 
     def test_binh_and_korn(self):
-        de = DifferentialEvolution()
+        de = NSDE()
         de.init(schaffer_n1, bounds=[(-100, 100)])
 
         for _ in de:
@@ -141,7 +141,7 @@ class TestLogic(unittest.TestCase):
 
         for i in range(2):
             dim = 2
-            de = DifferentialEvolution(seed=11)
+            de = NSDE(seed=11)
             de.init(paraboloid, bounds=[(-100, 100)] * dim)
             x[i] = np.copy(de.pop)
             del de
@@ -151,12 +151,12 @@ class TestLogic(unittest.TestCase):
     def test_custom_population_size(self):
         dim = 2
         n_pop = 11
-        de = DifferentialEvolution(n_pop=n_pop)
+        de = NSDE(n_pop=n_pop)
         de.init(paraboloid, bounds=[(-100, 100)] * dim)
         self.assertEqual(de.pop.shape[0], n_pop)
 
     def test_zero_population_size(self):
         dim = 2
-        de = DifferentialEvolution(n_pop=0)
+        de = NSDE(n_pop=0)
         de.init(paraboloid, bounds=[(-100, 100)] * dim)
         self.assertEqual(de.pop.shape[0], 5 * dim)

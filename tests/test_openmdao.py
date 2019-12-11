@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" Unit tests for the DifferentialEvolution Driver."""
+""" Unit tests for the NSDE Driver."""
 import itertools
 import numpy as np
 import openmdao.api as om
@@ -31,7 +31,7 @@ all_strategies = list(
 
 class TestSingleObjective(unittest.TestCase):
     def setUp(self):
-        os.environ["DifferentialEvolutionDriver_seed"] = "11"
+        os.environ["NSDEDriver_seed"] = "11"
         self.dim = 2
 
         prob = om.Problem()
@@ -47,7 +47,7 @@ class TestSingleObjective(unittest.TestCase):
         prob.model.add_design_var("x", lower=-100.0, upper=100.0)
         prob.model.add_objective("f")
 
-        prob.driver = DifferentialEvolutionDriver()
+        prob.driver = NSDEDriver()
         self.problem = prob
 
     def tearDown(self):
@@ -141,7 +141,7 @@ class TestMultiObjective(unittest.TestCase):
         prob.model.add_design_var("x", lower=-100.0, upper=100.0)
         prob.model.add_objective("f")
 
-        prob.driver = DifferentialEvolutionDriver()
+        prob.driver = NSDEDriver()
         self.problem = prob
         self.problem.setup()
         self.problem.run_driver()

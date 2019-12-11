@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Definition of the Differential Evolution algorithm"""
+"""Definition of the NSDE algorithm"""
 import numpy as np
 import nsga2_utils as nsga2
 
@@ -35,9 +35,9 @@ def mpi_fobj_wrapper(fobj):
     return wrapped
 
 
-class DifferentialEvolution:
+class NSDE:
     """
-    Differential evolution algorithm.
+    Non-dominated Sorting Differential Evolution (NSDE) Algorithm.
 
     Attributes
     ----------
@@ -268,7 +268,7 @@ class DifferentialEvolution:
             If this class is being used as an iterator before it has been initialized.
         """
         if not self._is_initialized:
-            raise RuntimeError("DifferentialEvolution is not yet initialized.")
+            raise RuntimeError("NSDE is not yet initialized.")
         return self
 
     def __next__(self):
@@ -277,7 +277,7 @@ class DifferentialEvolution:
 
         Returns
         -------
-        DifferentialEvolution
+        NSDE
             The new state at the next generation.
         """
         if (
