@@ -24,7 +24,7 @@ def binh_and_korn(x):
 
 def _get_de(mutation, number, crossover, repair, adaptivity):
     strategy = EvolutionStrategy(get_strategy_designation(mutation, number, crossover, repair))
-    return NSDE(strategy=strategy, adaptivity=adaptivity, seed=11)
+    return NSDE(strategy=strategy, adaptivity=adaptivity, seed=11, tolf=0)
 
 
 def _test_single_objective(fobj, x_opt, f_opt, *args):
