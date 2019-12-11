@@ -20,7 +20,7 @@ all_strategies = list(
                 ),
                 itertools.product(
                     list(EvolutionStrategy.__mutation_strategies__.keys()),
-                    [1, 2, 3],
+                    [1, 2],
                     list(EvolutionStrategy.__crossover_strategies__.keys()),
                     list(EvolutionStrategy.__repair_strategies__.keys()),
                     [0, 1, 2],
@@ -29,7 +29,7 @@ all_strategies = list(
         )
 
 
-class TestDifferentialEvolutionDriver(unittest.TestCase):
+class TestSingleObjective(unittest.TestCase):
     def setUp(self):
         os.environ["DifferentialEvolutionDriver_seed"] = "11"
         self.dim = 2
@@ -54,7 +54,7 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
         self.problem.cleanup()
 
     @parameterized.expand(all_strategies)
-    def test_differential_evolution_driver(self, name):
+    def test_unconstrained(self, name):
         tol = 1e-8
 
         strategy, adaptivity = name.split("_")[1::2]
@@ -63,16 +63,37 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
         self.problem.setup()
         self.problem.run_driver()
 
-        try:
-            self.assertTrue(np.all(self.problem["x"] < 1e-3))
-            self.assertLess(self.problem["f"][0], 1e-3)
-        except self.failureException:
-            # This is to account for strategies sometimes 'collapsing' prematurely.
-            # This is not a failed test, this is a known phenomenon with DE.
-            # In this case we just check that one of the two tolerances was triggered.
-            self.assertTrue(
-                self.problem.driver._de.dx < tol or self.problem.driver._de.df < tol
-            )
+        for x in self.problem["x"]:
+            self.assertAlmostEqual(x, 0.0, 1)
+        self.assertAlmostEqual(self.problem["f"][0], 0.0, 2)
+
+    def test_constrained(self):
+        f_con = om.ExecComp("c = 1 - x[0]", c=0.0, x=np.ones(self.dim))
+        self.problem.model.add_subsystem("con", f_con, promotes=["*"])
+        self.problem.model.add_constraint("c", upper=0.0)
+
+        self.problem.setup()
+        self.problem.run_driver()
+
+        self.assertAlmostEqual(self.problem["x"][0], 1.0, 1)
+        for x in self.problem["x"][1:]:
+            self.assertAlmostEqual(x, 0, 1)
+        self.assertAlmostEqual(self.problem["f"][0], 1.0, 2)
+
+    def test_vectorized_constraints(self):
+        self.problem.model.add_subsystem(
+            "con",
+            om.ExecComp("c = 1 - x", c=np.zeros(self.dim), x=np.ones(self.dim)),
+            promotes=["*"],
+        )
+        self.problem.model.add_constraint("c", upper=np.zeros(self.dim))
+
+        self.problem.setup()
+        self.problem.run_driver()
+
+        for x in self.problem["x"]:
+            self.assertAlmostEqual(x, 1.0, 2)
+        self.assertAlmostEqual(self.problem["f"][0], self.dim, 2)
 
     def test_seed_specified_repeatability(self):
         x = [None, None]
@@ -102,44 +123,18 @@ class TestDifferentialEvolutionDriver(unittest.TestCase):
         self.assertEqual(self.problem.driver._de.n_pop, n_pop)
         self.assertEqual(self.problem.driver._de.pop.shape[0], n_pop)
 
-    def test_constraint(self):
-        f_con = om.ExecComp("c = 1 - x[0]", c=0.0, x=np.ones(self.dim))
-        self.problem.model.add_subsystem("con", f_con, promotes=["*"])
-        self.problem.model.add_constraint("c", upper=0.0)
-
-        self.problem.setup()
-        self.problem.run_driver()
-
-        self.assertAlmostEqual(self.problem["x"][0], 1.0, 4)
-        self.assertTrue(np.all(np.abs(self.problem["x"][1:]) <= 1e-4))
-        self.assertAlmostEqual(self.problem["f"][0], 1.0, 4)
-
-    def test_vectorized_constraints(self):
-        self.problem.model.add_subsystem(
-            "con",
-            om.ExecComp("c = 1 - x", c=np.zeros(self.dim), x=np.ones(self.dim)),
-            promotes=["*"],
-        )
-        self.problem.model.add_constraint("c", upper=np.zeros(self.dim))
-
-        self.problem.setup()
-        self.problem.run_driver()
-
-        self.assertTrue(np.all(np.abs(self.problem["x"] - 1.0) <= 1e-4))
-        self.assertAlmostEqual(self.problem["f"][0], self.dim, 4)
-
 
 class TestMultiObjective(unittest.TestCase):
-    def setUp(self):
-        os.environ["DifferentialEvolutionDriver_seed"] = "11"
 
+    def test_unconstrained(self):
+        # The test problem is the multi-objective Schaffer Problem No.1
         prob = om.Problem()
         prob.model.add_subsystem(
-            "indeps", om.IndepVarComp("x", val=np.ones(self.dim)), promotes=["*"]
+            "indeps", om.IndepVarComp("x", val=1.0), promotes=["*"]
         )
         prob.model.add_subsystem(
             "objf",
-            om.ExecComp("f = [x ** 2, (x - 2) ** 2]", f=[1.0, 1.0], x=1.0),
+            om.ExecComp("f = [x[0] ** 2, (x[0] - 2) ** 2]", f=[1.0, 1.0], x=1.0),
             promotes=["*"],
         )
 
@@ -148,30 +143,13 @@ class TestMultiObjective(unittest.TestCase):
 
         prob.driver = DifferentialEvolutionDriver()
         self.problem = prob
-
-    def tearDown(self):
-        self.problem.cleanup()
-
-    @parameterized.expand(all_strategies)
-    def test_differential_evolution_driver(self, name):
-        tol = 1e-8
-
-        strategy, adaptivity = name.split("_")[1::2]
-        self.problem.driver.options["strategy"] = strategy
-        self.problem.driver.options["adaptivity"] = int(adaptivity)
         self.problem.setup()
         self.problem.run_driver()
 
-        try:
-            self.assertTrue(np.all(self.problem["x"] < 1e-3))
-            self.assertLess(self.problem["f"][0], 1e-3)
-        except self.failureException:
-            # This is to account for strategies sometimes 'collapsing' prematurely.
-            # This is not a failed test, this is a known phenomenon with DE.
-            # In this case we just check that one of the two tolerances was triggered.
-            self.assertTrue(
-                self.problem.driver._de.dx < tol or self.problem.driver._de.df < tol
-            )
+        # Check that the solution is on the known pareto front
+        self.assertAlmostEqual(self.problem["f"][1], (self.problem["f"][0] ** 0.5 - 2) ** 2, 2)
+
+        self.problem.cleanup()
 
 
 if __name__ == "__main__":

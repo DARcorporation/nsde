@@ -16,6 +16,12 @@ def schaffer_n1(x):
     return [x ** 2, (x - 2) ** 2]
 
 
+def binh_and_korn(x):
+    return (
+        [4 * np.sum(x ** 2), np.sum((x - 5) ** 2)],
+        [((x[0] - 5) ** 2 + x[1] ** 2) / 25 - 1, 1 - ((x[0] - 8) ** 2 + (x[1] + 3) ** 2) / 7.7]
+    )
+
 all_strategies = list(
     map(
         lambda t: (
@@ -85,12 +91,31 @@ class TestSingleObjective(unittest.TestCase):
 class TestMultiObjective(unittest.TestCase):
 
     @parameterized.expand(all_strategies)
-    def test_multi_objective(self, name):
+    def test_schaffer_n1(self, name):
         strategy, adaptivity = name.split("_")[1::2]
         strategy = EvolutionStrategy(strategy)
         de = DifferentialEvolution(
             strategy=strategy, adaptivity=int(adaptivity)
         )
+        de.init(schaffer_n1, bounds=[(-100, 100)])
+
+        for _ in de:
+            pass
+
+        pareto = de.fit[de.fronts[0]]
+        pareto = pareto[np.argsort(pareto[:, 0])]
+
+        f1 = pareto[:, 0]
+        f2 = (f1 ** 0.5 - 2) ** 2
+
+        e = pareto[:, 1] - f2
+        e_rel = e / np.abs(f2)
+        rms = np.mean(e_rel ** 2) ** 0.5
+
+        self.assertLess(rms, 1e-3)
+
+    def test_binh_and_korn(self):
+        de = DifferentialEvolution()
         de.init(schaffer_n1, bounds=[(-100, 100)])
 
         for _ in de:
