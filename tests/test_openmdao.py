@@ -1,156 +1,146 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" Unit tests for the NSDE Driver."""
-import itertools
 import numpy as np
+
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+""" Unit tests for the NSDE Driver."""
 import openmdao.api as om
 import os
-import unittest
+import pytest
 
-from parameterized import parameterized
-
-from nsde import *
-
-all_strategies = list(
-            map(
-                lambda t: (
-                    "strategy_"
-                    + "/".join([str(_t) for _t in t[:-1]])
-                    + "_adaptivity_{}".format(t[-1]),
-                ),
-                itertools.product(
-                    list(EvolutionStrategy.__mutation_strategies__.keys()),
-                    [1, 2],
-                    list(EvolutionStrategy.__crossover_strategies__.keys()),
-                    list(EvolutionStrategy.__repair_strategies__.keys()),
-                    [0, 1, 2],
-                ),
-            )
-        )
+from nsde import NSDEDriver
+from . import all_strategies, get_strategy_designation
 
 
-class TestSingleObjective(unittest.TestCase):
-    def setUp(self):
-        os.environ["NSDEDriver_seed"] = "11"
-        self.dim = 2
+def get_problem(dim=2):
+    os.environ["NSDEDriver_seed"] = "11"
 
-        prob = om.Problem()
-        prob.model.add_subsystem(
-            "indeps", om.IndepVarComp("x", val=np.ones(self.dim)), promotes=["*"]
-        )
-        prob.model.add_subsystem(
-            "objf",
-            om.ExecComp("f = sum(x * x)", f=1.0, x=np.ones(self.dim)),
-            promotes=["*"],
-        )
+    prob = om.Problem()
+    prob.model.add_subsystem(
+        "indeps", om.IndepVarComp("x", val=np.ones(dim)), promotes=["*"]
+    )
+    prob.model.add_subsystem(
+        "objf",
+        om.ExecComp("f = sum(x * x)", f=1.0, x=np.ones(dim)),
+        promotes=["*"],
+    )
 
-        prob.model.add_design_var("x", lower=-100.0, upper=100.0)
-        prob.model.add_objective("f")
+    prob.model.add_design_var("x", lower=-100.0, upper=100.0)
+    prob.model.add_objective("f")
 
-        prob.driver = NSDEDriver()
-        self.problem = prob
+    prob.driver = NSDEDriver()
+    return prob
 
-    def tearDown(self):
-        self.problem.cleanup()
 
-    @parameterized.expand(all_strategies)
-    def test_unconstrained(self, name):
-        tol = 1e-8
+@pytest.fixture
+def problem():
+    dim = 2
+    prob = get_problem(dim)
+    yield prob, dim
+    prob.cleanup()
 
-        strategy, adaptivity = name.split("_")[1::2]
-        self.problem.driver.options["strategy"] = strategy
-        self.problem.driver.options["adaptivity"] = int(adaptivity)
-        self.problem.setup()
-        self.problem.run_driver()
 
-        for x in self.problem["x"]:
-            self.assertAlmostEqual(x, 0.0, 1)
-        self.assertAlmostEqual(self.problem["f"][0], 0.0, 2)
+def _go_problem(prob, *args):
+    prob.driver.options["strategy"] = get_strategy_designation(*args[:-1])
+    prob.driver.options["adaptivity"] = args[-1]
+    problem.setup()
+    problem.run_driver()
 
-    def test_constrained(self):
-        f_con = om.ExecComp("c = 1 - x[0]", c=0.0, x=np.ones(self.dim))
-        self.problem.model.add_subsystem("con", f_con, promotes=["*"])
-        self.problem.model.add_constraint("c", upper=0.0)
 
-        self.problem.setup()
-        self.problem.run_driver()
+@all_strategies
+def test_single_objective_unconstrained(problem, *args):
+    problem, dim = problem
+    _go_problem(problem, *args)
 
-        self.assertAlmostEqual(self.problem["x"][0], 1.0, 1)
-        for x in self.problem["x"][1:]:
-            self.assertAlmostEqual(x, 0, 1)
-        self.assertAlmostEqual(self.problem["f"][0], 1.0, 2)
+    assert problem["x"] == pytest.approx(0.0, abs=1e-1)
+    assert problem["f"] == pytest.approx(0.0, abs=1e-1)
 
-    def test_vectorized_constraints(self):
-        self.problem.model.add_subsystem(
+
+@all_strategies
+def test_single_objective_constrained(problem, *args):
+    problem, dim = problem
+
+    f_con = om.ExecComp("c = 1 - x[0]", c=0.0, x=np.ones(dim))
+    problem.model.add_subsystem("con", f_con, promotes=["*"])
+    problem.model.add_constraint("c", upper=0.0)
+
+    _go_problem(problem, *args)
+
+    assert problem["x"][0] == pytest.approx(1.0, abs=1e-1)
+    assert problem["x"][1:] == pytest.approx(0.0, abs=1e-1)
+    assert problem["f"] == pytest.approx(1.0, abs=1e-2)
+
+
+@all_strategies
+def test_single_objective_vectorized_constraints(problem, *args):
+    problem, dim = problem
+
+    problem.model.add_subsystem(
             "con",
-            om.ExecComp("c = 1 - x", c=np.zeros(self.dim), x=np.ones(self.dim)),
+            om.ExecComp("c = 1 - x", c=np.zeros(dim), x=np.ones(dim)),
             promotes=["*"],
         )
-        self.problem.model.add_constraint("c", upper=np.zeros(self.dim))
+    problem.model.add_constraint("c", upper=np.zeros(dim))
 
-        self.problem.setup()
-        self.problem.run_driver()
+    _go_problem(problem, *args)
 
-        for x in self.problem["x"]:
-            self.assertAlmostEqual(x, 1.0, 2)
-        self.assertAlmostEqual(self.problem["f"][0], self.dim, 2)
-
-    def test_seed_specified_repeatability(self):
-        x = [None, None]
-        f = [None, None]
-
-        for i in range(2):
-            self.assertEqual(self.problem.driver._seed, 11)
-
-            self.problem.driver.options["max_gen"] = 10
-            self.problem.setup()
-            self.problem.run_driver()
-
-            x[i] = self.problem["x"]
-            f[i] = self.problem["f"][0]
-
-            self.tearDown()
-            self.setUp()
-
-        self.assertTrue(np.all(x[0] == x[1]))
-        self.assertEqual(f[0], f[1])
-
-    def test_custom_population_size(self):
-        n_pop = 11
-        self.problem.driver.options["pop_size"] = n_pop
-        self.problem.setup()
-        self.problem.run_driver()
-        self.assertEqual(self.problem.driver._de.n_pop, n_pop)
-        self.assertEqual(self.problem.driver._de.pop.shape[0], n_pop)
+    assert problem["x"] == pytest.approx(1.0, abs=1e-1)
+    assert problem["f"] == pytest.approx(dim, abs=1e-1)
 
 
-class TestMultiObjective(unittest.TestCase):
+def test_seed_specified_repeatability():
+    for i in range(2):
+        prob = get_problem()
+        assert prob.driver._seed == 11
 
-    def test_unconstrained(self):
-        # The test problem is the multi-objective Schaffer Problem No.1
-        prob = om.Problem()
-        prob.model.add_subsystem(
-            "indeps", om.IndepVarComp("x", val=1.0), promotes=["*"]
-        )
-        prob.model.add_subsystem(
-            "objf",
-            om.ExecComp("f = [x[0] ** 2, (x[0] - 2) ** 2]", f=[1.0, 1.0], x=1.0),
-            promotes=["*"],
-        )
+        prob.driver.options["max_gen"] = 10
+        prob.setup()
+        prob.run_driver()
 
-        prob.model.add_design_var("x", lower=-100.0, upper=100.0)
-        prob.model.add_objective("f")
+        if i == 0:
+            x = prob["x"]
+            f = prob["f"][0]
+        else:
+            assert np.all(x == prob["x"])
+            assert f == prob["f"][0]
 
-        prob.driver = NSDEDriver()
-        self.problem = prob
-        self.problem.setup()
-        self.problem.run_driver()
-
-        # Check that the solution is on the known pareto front
-        self.assertAlmostEqual(self.problem["f"][1], (self.problem["f"][0] ** 0.5 - 2) ** 2, 2)
-
-        self.problem.cleanup()
+        prob.cleanup()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_custom_population_size(problem):
+    problem, dim = problem
+
+    n_pop = 11
+    problem.driver.options["pop_size"] = n_pop
+    problem.setup()
+    problem.run_driver()
+
+    de = problem.driver.get_de()
+    assert de.n_pop == n_pop
+    assert de.pop.shape[0] == n_pop
+
+
+def test_multi_objective_unconstrainted():
+    # The test problem is the multi-objective Schaffer Problem No.1
+    problem = om.Problem()
+    problem.model.add_subsystem(
+        "indeps", om.IndepVarComp("x", val=1.0), promotes=["*"]
+    )
+    problem.model.add_subsystem(
+        "objf",
+        om.ExecComp("f = [x[0] ** 2, (x[0] - 2) ** 2]", f=[1.0, 1.0], x=1.0),
+        promotes=["*"],
+    )
+
+    problem.model.add_design_var("x", lower=-100.0, upper=100.0)
+    problem.model.add_objective("f")
+
+    problem.driver = NSDEDriver()
+    problem.setup()
+    problem.run_driver()
+
+    # Check that the solution is on the known pareto front
+    assert problem["f"][1] == pytest.approx((problem["f"][0] ** 0.5 - 2) ** 2, abs=1e-2)
+
+    problem.cleanup()

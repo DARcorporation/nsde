@@ -110,7 +110,6 @@ setup(
     ext_modules=ext_modules,
     install_requires=[
         "numpy>=1.17",
-        "openmdao<2.10,>=2.8",
         "tqdm<5,>=4.32",
         "six<1.13,>=1.12",
         "pybind11>=2.4",
@@ -118,7 +117,11 @@ setup(
     setup_requires=[
         "pybind11>=2.4",
     ],
+    extras_require={
+        "openmdao": "openmdao<2.10,>=2.8",
+    },
     tests_require=[
+        "pytest",
         "parameterized",
     ],
     cmdclass={"build_ext": BuildExt},

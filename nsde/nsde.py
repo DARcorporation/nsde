@@ -389,6 +389,10 @@ class NSDE:
             con = np.reshape(np.where(np.isnan(con), np.inf, con), (pop.shape[0], -1))
         return fit, con
 
+    def run(self):
+        for _ in self:
+            pass
+
     def procreate(self):
         """
         Generate a new population using the selected evolution strategy.
