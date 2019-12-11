@@ -49,6 +49,7 @@ def test_single_objective_unconstrained(*args):
     _test_single_objective(paraboloid, 0, 0, *args)
 
 
+@all_strategies
 def test_single_objective_constrained(*args):
     def fobj(x):
         return paraboloid(x), 1 - x
@@ -91,6 +92,7 @@ def test_multi_objective_unconstrained(*args):
     assert pareto[:, 1] == pytest.approx(f2, rel=1e-2)
 
 
+@all_strategies
 def test_multi_objective_constrained(*args):
     de = _get_de(*args)
     de.init(binh_and_korn, bounds=[(-15, 30)] * 2)
