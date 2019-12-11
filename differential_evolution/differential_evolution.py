@@ -484,15 +484,17 @@ class DifferentialEvolution:
 
         if self.n_obj == 1:
             self.best_idx = np.argmin(self.fit)
-            self.best = self.pop[self.best_idx]
-            self.best_fit = self.fit[self.best_idx]
-
             self.worst_idx = np.argmax(self.fit)
-            self.worst = self.pop[self.worst_idx]
-            self.worst_fit = self.fit[self.worst_idx]
         else:
-            # TODO
-            pass
+            # TODO: This is not the best way to do this...
+            self.best_idx = self.rng.choice(self.fronts[0])
+            self.worst_idx = self.rng.choice(self.fronts[-1])
+
+        self.best = self.pop[self.best_idx]
+        self.best_fit = self.fit[self.best_idx]
+
+        self.worst = self.pop[self.worst_idx]
+        self.worst_fit = self.fit[self.worst_idx]
 
     def _update_single(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
         if (
