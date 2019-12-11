@@ -1,4 +1,4 @@
-__version__ = '1.13.0'
+__version__ = '0.0.1'
 
 from .nsde import NSDE
 from .evolution_strategy import EvolutionStrategy
