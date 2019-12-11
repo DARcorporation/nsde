@@ -5,6 +5,7 @@ import numpy as np
 import unittest
 
 from nsde import *
+from nsde.evolution_strategy import clip
 from parameterized import parameterized
 
 
@@ -44,21 +45,27 @@ class TestSingleObjective(unittest.TestCase):
 
     def _test(self, fobj, x_opt, f_opt, name):
         strategy, adaptivity = name.split("_")[1::2]
+
+        adaptivity = int(adaptivity)
         strategy = EvolutionStrategy(strategy)
+
         de = NSDE(
-            strategy=strategy, tolf=0, adaptivity=int(adaptivity)
+            strategy=strategy, tolf=0, adaptivity=adaptivity, seed=11,
         )
         de.init(fobj, bounds=[(-100, 100)] * 2)
 
         for _ in de:
             pass
 
-        x_close = np.all(np.abs(de.best - x_opt) < 1e-2)
-        if not x_close and adaptivity == 0 or adaptivity == 1:
-            self.assertTrue(de.dx <= de.tolx or de.generation >= de.max_gen)
-        else:
-            self.assertTrue(x_close)
-            self.assertAlmostEqual(de.best_fit[0], f_opt, 2)
+        try:
+            for i in range(2):
+                self.assertAlmostEqual(de.best[i], x_opt, 1)
+            self.assertAlmostEqual(de.best_fit[0], f_opt, 1)
+        except AssertionError as e:
+            if adaptivity == 0 or strategy.repair == clip:
+                self.assertTrue(de.dx <= de.tolx or de.generation >= de.max_gen)
+            else:
+                raise e
 
     @parameterized.expand(all_strategies)
     def test_unconstrained(self, name):
@@ -91,7 +98,7 @@ class TestSingleObjective(unittest.TestCase):
 class TestMultiObjective(unittest.TestCase):
 
     @parameterized.expand(all_strategies)
-    def test_schaffer_n1(self, name):
+    def test_unconstrained(self, name):
         strategy, adaptivity = name.split("_")[1::2]
         strategy = EvolutionStrategy(strategy)
         de = NSDE(
@@ -114,7 +121,7 @@ class TestMultiObjective(unittest.TestCase):
 
         self.assertLess(rms, 1e-3)
 
-    def test_binh_and_korn(self):
+    def test_constrained(self):
         de = NSDE()
         de.init(schaffer_n1, bounds=[(-100, 100)])
 
