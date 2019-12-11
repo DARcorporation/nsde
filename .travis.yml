@@ -7,8 +7,8 @@ python:
   - "3.8"
 
 install:
-  - pip install .
   - pip install -r test_requirements.txt
+  - pip install .
 
 script:
   - pytest
