@@ -9,7 +9,7 @@ import unittest
 
 from parameterized import parameterized
 
-from differential_evolution import *
+from nsde import *
 
 all_strategies = list(
             map(

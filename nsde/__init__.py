@@ -1,6 +1,6 @@
 __version__ = '1.13.0'
 
-from .differential_evolution import DifferentialEvolution
+from .nsde import DifferentialEvolution
 from .evolution_strategy import EvolutionStrategy
 
 try:

@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 import unittest
 
-from differential_evolution import *
+from nsde import *
 from parameterized import parameterized
 
 

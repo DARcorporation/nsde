@@ -25,7 +25,7 @@ except ModuleNotFoundError:
         return i
 
 
-from differential_evolution import DifferentialEvolution, EvolutionStrategy
+from nsde import DifferentialEvolution, EvolutionStrategy
 
 if not MPI:
     rank = 0

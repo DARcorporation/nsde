@@ -6,16 +6,16 @@ from setuptools import setup
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open('differential_evolution/__init__.py').read(),
+    open('nsde/__init__.py').read(),
 )[0]
 
 setup(
-    name="differential_evolution",
+    name="nsde",
     version=__version__,
-    description="Differential Evolution Algorithm with OpenMDAO Driver",
+    description="Non-dominated Sorting Differential Evolution Algorithm",
     author="Daniel de Vries",
     author_email="danieldevries6@gmail.com",
-    packages=["differential_evolution"],
+    packages=["nsde"],
     install_requires=[
         "numpy>=1.17",
         "openmdao<2.10,>=2.8",
@@ -26,8 +26,8 @@ setup(
     tests_require=[
         "parameterized",
     ],
-    url="https://github.com/daniel-de-vries/differential-evolution",
-    download_url="https://github.com/daniel-de-vries/differential-evolution/archive/v{0}.tar.gz".format(
+    url="https://github.com/daniel-de-vries/nsde",
+    download_url="https://github.com/daniel-de-vries/nsde/archive/v{0}.tar.gz".format(
         __version__
     ),
     keywords=[
