@@ -1,15 +1,15 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "nsga2.h"
+#include "sorting.h"
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(nsga2_utils, m) {
+PYBIND11_MODULE(sorting, m) {
     m.doc() = R"pbdoc(
-                NSGA-II Methods
+                Non-dominated and crowding distance sorting methods
                 ---------------
-                .. currentmodule:: nsga2
+                .. currentmodule:: sorting
                 .. autosummary::
                    :toctree: _generate
                    dominates

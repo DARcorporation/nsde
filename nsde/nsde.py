@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """Definition of the NSDE algorithm"""
 import numpy as np
-import nsga2_utils as nsga2
 
 try:
     from openmdao.utils.concurrent import concurrent_eval
@@ -11,6 +10,7 @@ except ModuleNotFoundError:
 
     warnings.warn("OpenMDAO is not installed. Concurrent evaluation is not available.")
 
+from . import sorting
 from .evolution_strategy import EvolutionStrategy
 
 
@@ -549,11 +549,11 @@ class NSDE:
                 self.cr = np.concatenate((self.cr, cr_new))
 
         if self.n_con:
-            fronts = nsga2.nonDominatedSorting(self.fit, self.con, self.n_pop)
+            fronts = sorting.nonDominatedSorting(self.fit, self.con, self.n_pop)
         else:
-            fronts = nsga2.nonDominatedSorting(self.fit, self.n_pop)
+            fronts = sorting.nonDominatedSorting(self.fit, self.n_pop)
         fronts[-1] = np.asarray(fronts[-1])[
-            nsga2.crowdingDistanceSorting(self.fit[fronts[-1]])[
+            sorting.crowdingDistanceSorting(self.fit[fronts[-1]])[
             : (self.n_pop - sum(len(f) for f in fronts[:-1]))
             ]
         ].tolist()

@@ -3,7 +3,7 @@
 #include <limits>
 #include <numeric>
 #include <cmath>
-#include "nsga2.h"
+#include "sorting.h"
 
 bool dominates(const vector<float> &P1, const vector<float> &P2) {
     // Return True if P1 dominates P2

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "nsga2.h"
+#include "sorting.h"
 
 using namespace std;
 

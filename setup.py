@@ -30,8 +30,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        "nsga2_utils",
-        ["src/nsga2_module.cpp", "src/nsga2.cpp"],
+        "nsde.sorting",
+        ["src/sorting_module.cpp", "src/sorting.cpp"],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
