@@ -5,14 +5,6 @@ Driver for a differential evolution algorithm.
 
 This driver uses the differential_evolution Python package to provide the logic of the main
 differential evolution algorithms, developed by D. de Vries.
-
-The following reference is only for the penalty function:
-Smith, A. E., Coit, D. W. (1995) Penalty functions. In: Handbook of Evolutionary Computation, 97(1).
-
-The following reference is only for weighted sum multi-objective optimization:
-Sobieszczanski-Sobieski, J., Morris, A. J., van Tooren, M. J. L. (2015)
-Multidisciplinary Design Optimization Supported by Knowledge Based Engineering.
-John Wiley & Sons, Ltd.
 """
 import copy
 import itertools
@@ -44,14 +36,12 @@ else:
 def progress_string(de):
     s = " "
     if tqdm is None:
-        s += "gen: {:>5g} / {}, ".format(
-            de.generation, de.max_gen
-        )
+        s += "gen: {:>5g} / {}, ".format(de.generation, de.max_gen)
     s += (
         "f*: {:> 10.4g}, "
         "dx: {:> 10.4g} "
         "df: {:> 10.4g}".format(
-            de.best_fit, de.dx, de.df
+            de.best_fit[0], de.dx, de.df[0] if isinstance(de.df, np.ndarray) else de.df
         )
     )
     return s.replace("\n", "")
@@ -90,12 +80,12 @@ class DifferentialEvolutionDriver(Driver):
         super(DifferentialEvolutionDriver, self).__init__(**kwargs)
 
         # What we support
-        self.supports["integer_design_vars"] = True
         self.supports["inequality_constraints"] = True
         self.supports["equality_constraints"] = True
         self.supports["multiple_objectives"] = True
 
         # What we don't support yet
+        self.supports["integer_design_vars"] = False
         self.supports["two_sided_constraints"] = False
         self.supports["linear_constraints"] = False
         self.supports["simultaneous_derivatives"] = False
@@ -193,40 +183,6 @@ class DifferentialEvolutionDriver(Driver):
             desc="Number of processors to give each model under MPI.",
         )
         self.options.declare(
-            "penalty_parameter",
-            default=10.0,
-            lower=0.0,
-            desc="Penalty function parameter.",
-        )
-        self.options.declare(
-            "penalty_exponent", default=1.0, desc="Penalty function exponent."
-        )
-        self.options.declare(
-            "multi_obj_use_nsga2",
-            default=True,
-            desc="If True (default), multi-objective optimization will be handled "
-            "using the non-dominated sorting and crowding distance approach from "
-            "NSGA-II. If False, multi-objective optimizations will be converted to "
-            "single-objective using a weighted sums method."
-        )
-        self.options.declare(
-            "multi_obj_weights",
-            default={},
-            types=dict,
-            desc="Weights of objectives for multi-objective optimization."
-            "Weights are specified as a dictionary with the absolute names"
-            "of the objectives. The same weights for all objectives are assumed, "
-            "if not given. "
-            "This option has no effect if `multi_obj_use_nsga2` is True.",
-        )
-        self.options.declare(
-            "multi_obj_exponent",
-            default=1.0,
-            lower=0.0,
-            desc="Multi-objective weighting exponent. "
-            "This option has no effect if `multi_obj_use_nsga2` is True.",
-        )
-        self.options.declare(
             "show_progress",
             default=False,
             desc="Set to true if a progress bar should be shown.",
@@ -236,8 +192,8 @@ class DifferentialEvolutionDriver(Driver):
             default=None,
             allow_none=True,
             desc="Callback which will be called for each generation."
-                 "Callable should have a single argument, which will "
-                 "be an instance of the DifferentialEvolution class."
+            "Callable should have a single argument, which will "
+            "be an instance of the DifferentialEvolution class.",
         )
 
     def _setup_driver(self, problem):
@@ -396,7 +352,7 @@ class DifferentialEvolutionDriver(Driver):
             x0[i:j] = desvar_vals[name]
 
         de.init(self.objective_callback, bounds)
-        if rank == 0:
+        if rank == 0 and self.options["show_progress"]:
             print(progress_string(de))
         if self.options["generation_callback"] is not None:
             self.options["generation_callback"](de)
@@ -406,7 +362,7 @@ class DifferentialEvolutionDriver(Driver):
             gen_iter = tqdm(gen_iter, total=self.options["max_gen"])
 
         for generation in gen_iter:
-            if rank == 0:
+            if rank == 0 and self.options["show_progress"]:
                 print(progress_string(generation))
                 if self.options["generation_callback"] is not None:
                     self.options["generation_callback"](de)
@@ -430,56 +386,6 @@ class DifferentialEvolutionDriver(Driver):
         r"""
         Evaluate problem objective at the requested point.
 
-        In case of multi-objective optimization, a simple weighted sum method is used:
-
-        .. math::
-
-           f = (\sum_{k=1}^{N_f} w_k \cdot f_k)^a
-
-        where :math:`N_f` is the number of objectives and :math:`a>0` is an exponential
-        weight. Choosing :math:`a=1` is equivalent to the conventional weighted sum method.
-
-        The weights given in the options are normalized, so:
-
-        .. math::
-
-            \sum_{k=1}^{N_f} w_k = 1
-
-        If one of the objectives :math:`f_k` is not a scalar, its elements will have the same
-        weights, and it will be normed with length of the vector.
-
-        Takes into account constraints with a penalty function.
-
-        All constraints are converted to the form of :math:`g_i(x) \leq 0` for
-        inequality constraints and :math:`h_i(x) = 0` for equality constraints.
-        The constraint vector for inequality constraints is the following:
-
-        .. math::
-
-           g = [g_1, g_2  \dots g_N], g_i \in R^{N_{g_i}}
-
-           h = [h_1, h_2  \dots h_N], h_i \in R^{N_{h_i}}
-
-        The number of all constraints:
-
-        .. math::
-
-           N_g = \sum_{i=1}^N N_{g_i},  N_h = \sum_{i=1}^N N_{h_i}
-
-        The fitness function is constructed with the penalty parameter :math:`p`
-        and the exponent :math:`\kappa`:
-
-        .. math::
-
-           \Phi(x) = f(x) + p \cdot \sum_{k=1}^{N^g}(\delta_k \cdot g_k)^{\kappa}
-           + p \cdot \sum_{k=1}^{N^h}|h_k|^{\kappa}
-
-        where :math:`\delta_k = 0` if :math:`g_k` is satisfied, 1 otherwise
-
-        .. note::
-
-            The values of :math:`\kappa` and :math:`p` can be defined as driver options.
-
         Parameters
         ----------
         x : ndarray
@@ -487,26 +393,12 @@ class DifferentialEvolutionDriver(Driver):
 
         Returns
         -------
-        float
-            Objective value
+        f : ndarray
+            Objective values
+        g : ndarray
+            Constraint values
         """
         model = self._problem.model
-
-        objs = self.get_objective_values()
-        nr_objectives = len(objs)
-
-        # Single objective, if there is nly one objective, which has only one element
-        is_single_objective = (nr_objectives == 1) and (
-            len(next(itervalues(objs))) == 1
-        )
-
-        obj_exponent = self.options["multi_obj_exponent"]
-        if self.options["multi_obj_weights"]:  # not empty
-            obj_weights = self.options["multi_obj_weights"]
-        else:
-            # Same weight for all objectives, if not specified
-            obj_weights = {name: 1.0 for name in objs.keys()}
-        sum_weights = sum(itervalues(obj_weights))
 
         for name in self._designvars:
             i, j = self._desvar_idx[name]
@@ -525,57 +417,56 @@ class DifferentialEvolutionDriver(Driver):
             except AnalysisError:
                 model._clear_iprint()
 
-            obj_values = self.get_objective_values()
-            if is_single_objective:  # Single objective optimization
-                obj = next(itervalues(obj_values))  # First and only key in the dict
-            elif self.options["multi_obj_use_nsga2"]:
-                obj = list(itervalues(obj_values))
-            else: # Multi-objective optimization with weighted sums
-                weighted_objectives = np.array([])
-                for name, val in iteritems(obj_values):
-                    # element-wise multiplication with scalar
-                    # takes the average, if an objective is a vector
-                    try:
-                        weighted_obj = val * obj_weights[name] / val.size
-                    except KeyError:
-                        msg = (
-                            'Name "{}" in "multi_obj_weights" option '
-                            "is not an absolute name of an objective."
-                        )
-                        raise KeyError(msg.format(name))
-                    weighted_objectives = np.hstack((weighted_objectives, weighted_obj))
+            # Get the objective functions' values
+            f = np.array(list(itervalues(self.get_objective_values())))
 
-                obj = sum(weighted_objectives / sum_weights) ** obj_exponent
-
-            # Parameters of the penalty method
-            penalty = self.options["penalty_parameter"]
-            exponent = self.options["penalty_exponent"]
-
-            if penalty == 0:
-                fun = obj
-            else:
-                violation = None
-                constraint_violations = np.array([])
+            # Get the constraint violations
+            g = np.array([])
+            with np.errstate(
+                divide="ignore"
+            ):  # Ignore divide-by-zero warnings temporarily
                 for name, val in iteritems(self.get_constraint_values()):
                     con = self._cons[name]
                     # The not used fields will either None or a very large number
-                    if (con["lower"] is not None) and np.any(con["lower"] > -almost_inf):
-                        diff = val - con["lower"]
-                        violation = np.array([0.0 if d >= 0 else abs(d) for d in diff])
-                    elif (con["upper"] is not None) and np.any(con["upper"] < almost_inf):
-                        diff = val - con["upper"]
-                        violation = np.array([0.0 if d <= 0 else abs(d) for d in diff])
-                    elif (con["equals"] is not None) and np.any(np.abs(con["equals"]) < almost_inf):
-                        diff = val - con["equals"]
-                        violation = np.absolute(diff)
-                    constraint_violations = np.hstack((constraint_violations, violation))
-                fun = obj + penalty * sum(np.power(constraint_violations, exponent))
+                    # All constraints will be converted into standard <= 0 form.
+                    if (con["lower"] is not None) and np.any(
+                        con["lower"] > -almost_inf
+                    ):
+                        g = np.append(
+                            g,
+                            np.where(
+                                con["lower"] == 0,
+                                con["lower"] - val,
+                                1 - val / con["lower"],
+                            ).flatten(),
+                        )
+                    elif (con["upper"] is not None) and np.any(
+                        con["upper"] < almost_inf
+                    ):
+                        g = np.append(
+                            g,
+                            np.where(
+                                con["upper"] == 0,
+                                val - con["upper"],
+                                val / con["upper"] - 1,
+                            ).flatten(),
+                        )
+                    elif (con["equals"] is not None) and np.any(
+                        np.abs(con["equals"]) < almost_inf
+                    ):
+                        g = np.append(
+                            g,
+                            np.where(
+                                con["equals"] == 0,
+                                np.abs(con["equals"] - val),
+                                np.abs(1 - val / con["equals"]),
+                            ).flatten()
+                            - 1e-6,
+                        )
+
             # Record after getting obj to assure they have
             # been gathered in MPI.
             rec.abs = 0.0
             rec.rel = 0.0
 
-        # print("Functions calculated")
-        # print(x)
-        # print(obj)
-        return fun[0]
+        return f.flatten(), g.flatten()
