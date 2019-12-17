@@ -43,6 +43,7 @@ ext_modules = [
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
+            "src/include",
         ],
         language="c++",
     )
@@ -117,7 +118,7 @@ setup(
     author_email="danieldevries6@gmail.com",
     packages=["nsde"],
     ext_modules=ext_modules,
-    python_requires='>=3, <4',
+    python_requires='>=3.6, <4',
     install_requires=[
         "numpy>=1.17",
         "tqdm<5,>=4.32",
