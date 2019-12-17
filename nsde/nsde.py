@@ -509,24 +509,40 @@ class NSDE:
         ):
             if self.n_con:
                 con_tol = 1e-6
-                improved_indices = []
-                for i in range(self.n_pop):
-                    f1 = np.all(con_new[i] <= con_tol)
-                    f2 = np.all(self.con[i] <= con_tol)
-                    if f1 and f2:
-                        if fit_new[i] <= self.fit[i]:
-                            improved_indices += [i]
-                    elif f1 and not f2:
-                        improved_indices += [i]
-                    elif not f1 and not f2:
-                        if np.sum(
-                            np.where(con_new[i] > con_tol, con_new, 0.0)
-                        ) <= np.sum(np.where(self.con[i] > con_tol, self.con, 0.0)):
-                            improved_indices += [i]
+                f1 = np.all(con_new <= con_tol, axis=1)
+                f2 = np.all(self.con <= con_tol, axis=1)
+                improved_indices = np.argwhere(
+                    np.logical_or(
+                        np.logical_and(
+                            np.logical_and(f1, f2),
+                            np.less_equal(fit_new, self.fit).flatten(),
+                        ),
+                        np.logical_and(f1, np.logical_not(f2)),
+                        np.logical_and(
+                            np.logical_and(np.logical_not(f1), np.logical_not(f2)),
+                            np.less_equal(
+                                np.sum(
+                                    np.where(
+                                        np.greater(con_new, con_tol), con_new, 0.0
+                                    ),
+                                    axis=1,
+                                ),
+                                np.sum(
+                                    np.where(
+                                        np.greater(self.con, con_tol), self.con, 0.0
+                                    ),
+                                    axis=1,
+                                ),
+                            ),
+                        ),
+                    )
+                )
 
                 self.con[improved_indices] = con_new[improved_indices]
             else:
-                improved_indices = np.argwhere(fit_new <= self.fit)
+                improved_indices = np.argwhere(
+                    np.less_equal(fit_new, self.fit).flatten()
+                )
 
             self.pop[improved_indices] = pop_new[improved_indices]
             self.fit[improved_indices] = fit_new[improved_indices]
