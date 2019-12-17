@@ -8,17 +8,15 @@ to provide an efficient and robust method for the global optimization of constra
 multi-objective optimization problems. 
 
 ### Installation
-NSDE is available on [PyPi](https://pypi.org/project/nsde), so it can be installed using `pip install nsde`.
+NSDE is available on [PyPi](https://pypi.org/project/nsde), so it can be installed using `pip install nsde`. It can
+also be installed using `python setup.py install` from the root of this repository. 
 
-Several methods of NSDE are written in C++ to accelerate the code. Therefore, in order to install NSDE manually, a 
-working C++ compiler is required. For Windows, this has been tested only using Visual Studio. Furthermore, 
-[pybind11](https://github.com/pybind/pybind11) needs to be installed and available on the environment. Once these 
-requirements are met, NSDE can be compiled and installed using `python setup.py install` from the root of this 
-repository.
+Note that several methods of NSDE are written in C++ to accelerate the code. Therefore, in order to install NSDE from 
+source, a working C++ compiler is required. For Windows, this has only been tested using Visual Studio.
 
 ### Usage
-To solve an optimization problem using NSDE, write a function which takes a single input argument, `x`, which represents
-the design vector, and outputs a list of objective values, `f`, and constraints, `g` (optional). For example:
+To solve an optimization problem using NSDE, define a function which takes a single input argument, `x`, which 
+represents the design vector, and outputs a list of objective values, `f`, and constraints, `g` (optional). For example:
 
 ```python
 def unconstrained(x):
@@ -56,7 +54,7 @@ pareto = opt.fit[opt.fronts[0]]
 
 When calling `.run()` on an instance of the `NSDE` class, the problem is solved until convergence or the maximum number
 of generations is reached. Alternatively, it is also possible to solve problems one generation at a time by treating 
-`opt` as an iterator:
+the instance of the `NSDE` class as an iterator:
 
 ```python
 for generation in opt:
