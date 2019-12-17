@@ -12,11 +12,11 @@ here = path.abspath(path.dirname(__file__))
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open(path.join(here, 'nsde/__init__.py')).read(),
+    open(path.join(here, "nsde/__init__.py")).read(),
 )[0]
 
 
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 
@@ -110,6 +110,7 @@ class BuildExt(build_ext):
             ext.extra_link_args = link_opts
         build_ext.build_extensions(self)
 
+
 setup(
     name="nsde",
     version=__version__,
@@ -120,23 +121,16 @@ setup(
     author_email="danieldevries6@gmail.com",
     packages=["nsde"],
     ext_modules=ext_modules,
-    python_requires='>=3.6, <4',
+    python_requires=">=3.6, <4",
     install_requires=[
         "numpy>=1.17",
         "tqdm<5,>=4.32",
         "six<1.13,>=1.12",
         "pybind11>=2.4",
     ],
-    setup_requires=[
-        "pybind11>=2.4",
-    ],
-    extras_require={
-        "openmdao": "openmdao<2.10,>=2.8",
-    },
-    tests_require=[
-        "pytest",
-        "parameterized",
-    ],
+    setup_requires=["pybind11>=2.4"],
+    extras_require={"openmdao": "openmdao<2.10,>=2.8"},
+    tests_require=["pytest", "parameterized"],
     cmdclass={"build_ext": BuildExt},
     url="https://github.com/daniel-de-vries/nsde",
     download_url="https://github.com/daniel-de-vries/nsde/archive/v{0}.tar.gz".format(
@@ -157,19 +151,19 @@ setup(
     ],
     license="MIT License",
     classifiers=[
-        'Development Status :: 4 - Beta',
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
-        'Natural Language :: English',
+        "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: C++",
-        'Programming Language :: Python',
+        "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
-        'Programming Language :: Python :: 3.7',
+        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering",
     ],

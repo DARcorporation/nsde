@@ -18,12 +18,17 @@ def schaffer_n1(x):
 def binh_and_korn(x):
     return (
         [4 * np.sum(x ** 2), np.sum((x - 5) ** 2)],
-        [((x[0] - 5) ** 2 + x[1] ** 2) / 25 - 1, 1 - ((x[0] - 8) ** 2 + (x[1] + 3) ** 2) / 7.7]
+        [
+            ((x[0] - 5) ** 2 + x[1] ** 2) / 25 - 1,
+            1 - ((x[0] - 8) ** 2 + (x[1] + 3) ** 2) / 7.7,
+        ],
     )
 
 
 def _get_de(mutation, number, crossover, repair, adaptivity):
-    strategy = EvolutionStrategy(get_strategy_designation(mutation, number, crossover, repair))
+    strategy = EvolutionStrategy(
+        get_strategy_designation(mutation, number, crossover, repair)
+    )
     return NSDE(strategy=strategy, adaptivity=adaptivity, seed=11, tolf=0)
 
 

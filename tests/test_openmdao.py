@@ -20,9 +20,7 @@ def get_problem(dim=2):
         "indeps", om.IndepVarComp("x", val=np.ones(dim)), promotes=["*"]
     )
     prob.model.add_subsystem(
-        "objf",
-        om.ExecComp("f = sum(x * x)", f=1.0, x=np.ones(dim)),
-        promotes=["*"],
+        "objf", om.ExecComp("f = sum(x * x)", f=1.0, x=np.ones(dim)), promotes=["*"]
     )
 
     prob.model.add_design_var("x", lower=-100.0, upper=100.0)
@@ -71,10 +69,8 @@ def test_single_objective_vectorized_constraints(problem):
     problem, dim = problem
 
     problem.model.add_subsystem(
-            "con",
-            om.ExecComp("c = 1 - x", c=np.zeros(dim), x=np.ones(dim)),
-            promotes=["*"],
-        )
+        "con", om.ExecComp("c = 1 - x", c=np.zeros(dim), x=np.ones(dim)), promotes=["*"]
+    )
     problem.model.add_constraint("c", upper=np.zeros(dim))
 
     _go_problem(problem)
@@ -116,9 +112,7 @@ def test_custom_population_size(problem):
 def test_multi_objective_unconstrained():
     # The test problem is the multi-objective Schaffer Problem No.1
     problem = om.Problem()
-    problem.model.add_subsystem(
-        "indeps", om.IndepVarComp("x", val=1.0), promotes=["*"]
-    )
+    problem.model.add_subsystem("indeps", om.IndepVarComp("x", val=1.0), promotes=["*"])
     problem.model.add_subsystem(
         "objf",
         om.ExecComp("f = [x[0] ** 2, (x[0] - 2) ** 2]", f=[1.0, 1.0], x=1.0),

@@ -222,9 +222,7 @@ class NSDE:
 
             # If we are running under MPI, expand population to fully exploit all processors
             if self.comm is not None:
-                self.n_pop = int(
-                    np.ceil(self.n_pop / self.comm.size) * self.comm.size
-                )
+                self.n_pop = int(np.ceil(self.n_pop / self.comm.size) * self.comm.size)
 
             self.pop = np.concatenate(
                 (
@@ -500,12 +498,14 @@ class NSDE:
         self.worst = self.pop[self.worst_idx]
         self.worst_fit = self.fit[self.worst_idx]
 
-    def _update_single(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
+    def _update_single(
+        self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None
+    ):
         if (
-                pop_new is not None
-                and fit_new is not None
-                and f_new is not None
-                and cr_new is not None
+            pop_new is not None
+            and fit_new is not None
+            and f_new is not None
+            and cr_new is not None
         ):
             if self.n_con:
                 con_tol = 1e-6
@@ -519,10 +519,9 @@ class NSDE:
                     elif f1 and not f2:
                         improved_indices += [i]
                     elif not f1 and not f2:
-                        if (
-                                np.sum(np.where(con_new[i] > con_tol, con_new, 0.0)) <=
-                                np.sum(np.where(self.con[i] > con_tol, self.con, 0.0))
-                        ):
+                        if np.sum(
+                            np.where(con_new[i] > con_tol, con_new, 0.0)
+                        ) <= np.sum(np.where(self.con[i] > con_tol, self.con, 0.0)):
                             improved_indices += [i]
 
                 self.con[improved_indices] = con_new[improved_indices]
@@ -536,12 +535,14 @@ class NSDE:
                 self.f[improved_indices] = f_new[improved_indices]
                 self.cr[improved_indices] = cr_new[improved_indices]
 
-    def _update_multi(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
+    def _update_multi(
+        self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None
+    ):
         if (
-                pop_new is not None
-                and fit_new is not None
-                and f_new is not None
-                and cr_new is not None
+            pop_new is not None
+            and fit_new is not None
+            and f_new is not None
+            and cr_new is not None
         ):
             self.pop = np.concatenate((self.pop, pop_new))
             self.fit = np.concatenate((self.fit, fit_new))
@@ -558,7 +559,7 @@ class NSDE:
             fronts = sorting.nonDominatedSorting(self.fit, self.n_pop)
         fronts[-1] = np.asarray(fronts[-1])[
             sorting.crowdingDistanceSorting(self.fit[fronts[-1]])[
-            : (self.n_pop - sum(len(f) for f in fronts[:-1]))
+                : (self.n_pop - sum(len(f) for f in fronts[:-1]))
             ]
         ].tolist()
         new_idxs = []
