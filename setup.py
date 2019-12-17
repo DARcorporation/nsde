@@ -4,13 +4,20 @@ import re
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from os import path
 import sys
 import setuptools
 
+here = path.abspath(path.dirname(__file__))
+
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open('nsde/__init__.py').read(),
+    open(path.join(here, 'nsde/__init__.py')).read(),
 )[0]
+
+
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 
 class get_pybind_include(object):
@@ -104,10 +111,13 @@ setup(
     name="nsde",
     version=__version__,
     description="Non-dominated Sorting Differential Evolution (NSDE) Algorithm",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Daniel de Vries",
     author_email="danieldevries6@gmail.com",
     packages=["nsde"],
     ext_modules=ext_modules,
+    python_requires='>=3, <4',
     install_requires=[
         "numpy>=1.17",
         "tqdm<5,>=4.32",
