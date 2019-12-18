@@ -25,15 +25,8 @@ def binh_and_korn(x):
     )
 
 
-def _get_de(mutation, number, crossover, repair, adaptivity):
-    strategy = EvolutionStrategy(
-        get_strategy_designation(mutation, number, crossover, repair)
-    )
-    return NSDE(strategy=strategy, adaptivity=adaptivity, seed=11, tolf=0)
-
-
 def _test_single_objective(fobj, x_opt, f_opt, *args):
-    de = _get_de(*args)
+    de = NSDE(*args, seed=11, tolf=0)
     de.init(fobj, bounds=[(-100, 100)] * 2)
 
     for _ in de:
@@ -49,17 +42,30 @@ def _test_single_objective(fobj, x_opt, f_opt, *args):
             raise e
 
 
-@all_strategies
-def test_single_objective_unconstrained(*args):
-    _test_single_objective(paraboloid, 0, 0, *args)
+@pytest.mark.parametrize("repair", EvolutionStrategy.__repair_strategies__.keys())
+@pytest.mark.parametrize(
+    "crossover", EvolutionStrategy.__crossover_strategies__.keys()
+)
+@pytest.mark.parametrize("number", [1, 2])
+@pytest.mark.parametrize(
+    "mutation", EvolutionStrategy.__mutation_strategies__.keys()
+)
+def test_strategies(mutation, number, crossover, repair):
+    strategy = "/".join([mutation, str(number), crossover, repair])
+    de = NSDE(strategy=strategy)
+    assert isinstance(de.strategy, EvolutionStrategy)
+    assert de.strategy.__repr__() == strategy
 
 
-@all_strategies
-def test_single_objective_constrained(*args):
+def test_single_objective_unconstrained():
+    _test_single_objective(paraboloid, 0, 0)
+
+
+def test_single_objective_constrained():
     def fobj(x):
         return paraboloid(x), 1 - x
 
-    _test_single_objective(fobj, 1, 2, *args)
+    _test_single_objective(fobj, 1, 2)
 
 
 def test_single_objective_nan_landscape():
@@ -80,9 +86,8 @@ def test_single_objective_nan_landscape():
     assert de.best == pytest.approx(0.0, abs=1e-5)
 
 
-@all_strategies
-def test_multi_objective_unconstrained(*args):
-    de = _get_de(*args)
+def test_multi_objective_unconstrained():
+    de = NSDE(seed=11, tolf=0)
     de.init(schaffer_n1, bounds=[(-100, 100)])
 
     for _ in de:
@@ -97,9 +102,8 @@ def test_multi_objective_unconstrained(*args):
     assert pareto[:, 1] == pytest.approx(f2, rel=1e-2)
 
 
-@all_strategies
-def test_multi_objective_constrained(*args):
-    de = _get_de(*args)
+def test_multi_objective_constrained():
+    de = NSDE(seed=11, tolf=0)
     de.init(binh_and_korn, bounds=[(-15, 30)] * 2)
 
     for _ in de:

@@ -128,9 +128,14 @@ class NSDE:
         self.comm = comm
         self.model_mpi = model_mpi
 
-        self.strategy = strategy
         if strategy is None:
             self.strategy = EvolutionStrategy("rand-to-best/1/exp")
+        elif isinstance(strategy, EvolutionStrategy):
+            self.strategy = strategy
+        elif isinstance(strategy, str):
+            self.strategy = EvolutionStrategy(strategy)
+        else:
+            raise ValueError("Argument `strategy` should be None, a str, or an instance of EvolutionStrategy.")
 
         self.pop = None
         self.fit = None
@@ -144,6 +149,7 @@ class NSDE:
         self.generation = 0
 
         self._is_initialized = False
+        self._running_under_mpi = comm is not None and hasattr(comm, "bcast")
 
     def init(self, fobj, bounds, pop=None):
         """
@@ -206,7 +212,7 @@ class NSDE:
                 )
 
         # Ensure all processors have the same population and mutation/crossover parameters
-        if self.comm is not None:
+        if self._running_under_mpi:
             self.pop, self.f, self.cr = self.comm.bcast(
                 (self.pop, self.f, self.cr), root=0
             )
@@ -221,7 +227,7 @@ class NSDE:
             self.n_pop = 5 * self.n_dim * self.n_obj
 
             # If we are running under MPI, expand population to fully exploit all processors
-            if self.comm is not None:
+            if self._running_under_mpi:
                 self.n_pop = int(np.ceil(self.n_pop / self.comm.size) * self.comm.size)
 
             self.pop = np.concatenate(
@@ -236,7 +242,7 @@ class NSDE:
                 self.adaptivity, self.f, self.cr, self.n_pop, self.rng
             )
 
-            if self.comm is not None:
+            if self._running_under_mpi:
                 self.pop, self.f, self.cr = self.comm.bcast(
                     (self.pop, self.f, self.cr), root=0
                 )
@@ -287,7 +293,7 @@ class NSDE:
             pop_new, f_new, cr_new = self.procreate()
 
             # Ensure all processors have the same updated population and mutation/crossover parameters
-            if self.comm is not None:
+            if self._running_under_mpi:
                 pop_new, f_new, cr_new = self.comm.bcast(
                     (pop_new, f_new, cr_new), root=0
                 )
@@ -353,7 +359,7 @@ class NSDE:
             return _fit, _con
 
         # Evaluate generation
-        if self.comm is not None:
+        if self._running_under_mpi:
             # Construct run cases
             cases = [((item, ii), None) for ii, item in enumerate(pop)]
 

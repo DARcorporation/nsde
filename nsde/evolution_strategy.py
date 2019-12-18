@@ -4,7 +4,7 @@
 import numpy as np
 
 
-def mutation_helper(n, parent_idx, population, rng):
+def _mutation_helper(n, parent_idx, population, rng):
     """Helper function for the mutation strategies
 
     Parameters
@@ -49,7 +49,7 @@ def rand(n):
     """
 
     def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
-        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = _mutation_helper(n, parent_idx, population, rng)
 
         if self_adaptive:
             f_mutant = f[idxs[0]] + np.sum(
@@ -89,7 +89,7 @@ def best(n):
     """
 
     def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
-        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = _mutation_helper(n, parent_idx, population, rng)
 
         if fronts is None:
             i_best = np.argmin(fitness)
@@ -134,7 +134,7 @@ def rand_to_best(n):
     """
 
     def mutate(parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
-        idxs, r, s = mutation_helper(n, parent_idx, population, rng)
+        idxs, r, s = _mutation_helper(n, parent_idx, population, rng)
 
         if fronts is None:
             i_best = np.argmin(fitness)
