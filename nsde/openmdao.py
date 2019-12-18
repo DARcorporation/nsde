@@ -39,11 +39,15 @@ def progress_string(de):
         s += "gen: {:>5g} / {}, ".format(de.generation, de.max_gen)
     s += (
         "f*: {:> 10.4g}, "
-        "dx: {:> 10.4g} "
+        "dx: {:> 10.4g}, "
         "df: {:> 10.4g}".format(
-            de.best_fit[0], de.dx, de.df[0] if isinstance(de.df, np.ndarray) else de.df
+            de.best_fit[0],
+            de.dx,
+            de.df[0] if isinstance(de.df, np.ndarray) else de.df
         )
     )
+    if de.n_con > 0:
+        s += f", feasible: {np.count_nonzero(np.all(de.con <= 1e-6, axis=1).flatten()):>4d}/{de.n_pop}"
     return s.replace("\n", "")
 
 
