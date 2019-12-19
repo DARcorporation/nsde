@@ -129,7 +129,7 @@ class NSDE:
         self.model_mpi = model_mpi
 
         if strategy is None:
-            self.strategy = EvolutionStrategy("rand-to-best/1/exp")
+            self.strategy = EvolutionStrategy("rand-to-best/1/bin/random")
         elif isinstance(strategy, EvolutionStrategy):
             self.strategy = strategy
         elif isinstance(strategy, str):
