@@ -199,6 +199,14 @@ class NSDEDriver(Driver):
             "Callable should have a single argument, which will "
             "be an instance of the NSDE class.",
         )
+        self.options.declare(
+            "initial_population",
+            default=None,
+            allow_nonw=True,
+            desc="Initial population with which to start the optimization."
+                 "This should be a 2D array with design vectors as rows and"
+                 "one row per individual.",
+        )
 
     def _setup_driver(self, problem):
         """
@@ -355,7 +363,7 @@ class NSDEDriver(Driver):
                 bounds += [(lb[k], ub[k])]
             x0[i:j] = desvar_vals[name]
 
-        de.init(self.objective_callback, bounds)
+        de.init(self.objective_callback, bounds, self.options["initial_population"])
         if rank == 0 and self.options["show_progress"]:
             print(progress_string(de))
         if self.options["generation_callback"] is not None:
