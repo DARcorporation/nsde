@@ -202,7 +202,7 @@ class NSDEDriver(Driver):
         self.options.declare(
             "initial_population",
             default=None,
-            allow_nonw=True,
+            allow_none=True,
             desc="Initial population with which to start the optimization."
                  "This should be a 2D array with design vectors as rows and"
                  "one row per individual.",
