@@ -108,3 +108,19 @@ def test_multi_objective_constrained():
 
     for _ in de:
         pass
+
+
+def test_initial_infeasible_population():
+    """
+    This test ensures that the best and rand-to-best strategies do not keep infeasible individuals alive, even if the
+    initial population is entirely infeasible.
+    """
+    def problem(x):
+        return np.sqrt(np.sum(x ** 2)), 75 - x[1]
+
+    de = NSDE(strategy="best/1/bin/random")
+    de.init(problem, bounds=[(0, 100), (0, 75)])
+    de.ub[1] = 100
+    de.run()
+
+    assert de.best_fit[0] >= 75 - 1e-6

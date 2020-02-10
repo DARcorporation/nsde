@@ -413,6 +413,17 @@ class NSDE:
         pop_old_norm = (np.copy(self.pop) - self.lb) / self.range
         pop_new_norm = np.empty_like(pop_old_norm)
 
+        # If there are constraints, augment the fitness to penalize infeasible individuals while procreating.
+        # This stops the best and rand-to-best strategies to keep the best infeasible individual alive indefinitely.
+        if self.n_con and False:
+            fit = np.where(
+                np.any(self.con >= 1e-6, axis=1, keepdims=True),
+                np.linalg.norm(self.con, axis=1, keepdims=True) + np.max(self.fit),
+                self.fit,
+            )
+        else:
+            fit = self.fit
+
         if self.adaptivity == 0 or self.adaptivity == 1:
             if self.adaptivity == 0:
                 # No adaptivity. Use static f and cr.
@@ -433,14 +444,7 @@ class NSDE:
 
             for idx in range(self.n_pop):
                 pop_new_norm[idx], _, _ = self.strategy(
-                    idx,
-                    pop_old_norm,
-                    self.fit,
-                    self.fronts,
-                    f_new,
-                    cr_new,
-                    self.rng,
-                    False,
+                    idx, pop_old_norm, fit, self.fronts, f_new, cr_new, self.rng, False
                 )
         else:
             # Complex adaptivity. Mutate f and cr.
@@ -449,14 +453,7 @@ class NSDE:
 
             for idx in range(self.n_pop):
                 pop_new_norm[idx], f_new[idx], cr_new[idx] = self.strategy(
-                    idx,
-                    pop_old_norm,
-                    self.fit,
-                    self.fronts,
-                    self.f,
-                    self.cr,
-                    self.rng,
-                    True,
+                    idx, pop_old_norm, fit, self.fronts, self.f, self.cr, self.rng, True
                 )
 
         pop_new = self.lb + self.range * np.asarray(pop_new_norm)
