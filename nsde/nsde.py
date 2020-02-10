@@ -536,9 +536,7 @@ class NSDE:
 
                 self.con[improved_indices] = con_new[improved_indices]
             else:
-                improved_indices = np.argwhere(
-                    np.less_equal(fit_new, self.fit).flatten()
-                )
+                improved_indices = np.argwhere((fit_new <= self.fit).flatten())
 
             self.pop[improved_indices] = pop_new[improved_indices]
             self.fit[improved_indices] = fit_new[improved_indices]
