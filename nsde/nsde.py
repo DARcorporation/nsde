@@ -518,29 +518,20 @@ class NSDE:
                 f1 = np.all(con_new <= con_tol, axis=1)
                 f2 = np.all(self.con <= con_tol, axis=1)
                 improved_indices = np.argwhere(
-                    np.logical_or(
-                        np.logical_and(
-                            np.logical_and(f1, f2),
-                            np.less_equal(fit_new, self.fit).flatten(),
-                        ),
-                        np.logical_and(f1, np.logical_not(f2)),
-                        np.logical_and(
-                            np.logical_and(np.logical_not(f1), np.logical_not(f2)),
-                            np.less_equal(
-                                np.sum(
-                                    np.where(
-                                        np.greater(con_new, con_tol), con_new, 0.0
-                                    ),
-                                    axis=1,
-                                ),
-                                np.sum(
-                                    np.where(
-                                        np.greater(self.con, con_tol), self.con, 0.0
-                                    ),
-                                    axis=1,
-                                ),
-                            ),
-                        ),
+                    ((f1 & f2) & (fit_new <= self.fit).flatten())
+                    + (f1 & ~f2)
+                    + (
+                        (~f1 & ~f2)
+                        & (
+                            np.sum(
+                                np.where(np.greater(con_new, con_tol), con_new, 0.0),
+                                axis=1,
+                            )
+                            <= np.sum(
+                                np.where(np.greater(self.con, con_tol), self.con, 0.0),
+                                axis=1,
+                            )
+                        )
                     )
                 )
 
