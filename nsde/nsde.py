@@ -135,7 +135,9 @@ class NSDE:
         elif isinstance(strategy, str):
             self.strategy = EvolutionStrategy(strategy)
         else:
-            raise ValueError("Argument `strategy` should be None, a str, or an instance of EvolutionStrategy.")
+            raise ValueError(
+                "Argument `strategy` should be None, a str, or an instance of EvolutionStrategy."
+            )
 
         self.pop = None
         self.fit = None
