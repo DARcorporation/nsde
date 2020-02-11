@@ -42,7 +42,12 @@ class NSDE:
     Attributes
     ----------
     fobj : callable
-        Objective function
+        Objective function.
+        Should have a single argument of type array_like which corresponds to the design vector.
+        Should have either a single float or 1D array output corresponding to the objective function value(s),
+        or two array_like outputs, the first of which corresponds to the objective function value(s) and the second
+        to the constraint violations.
+        Constraints are assumed to be satisfied if constraint violations <= constraint tolerance.
     lb, ub : array_like
         Lower and upper bounds
     range : array_like
