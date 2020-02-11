@@ -39,9 +39,16 @@ import nsde
 opt = nsde.NSDE()
 opt.init(constrained, bounds=[(-100, 100)] * 2)
 opt.run()
-x_opt = opt.best
-f_opt = opt.best_fit
+x_opt = opt.pop[0]
+f_opt = opt.fit[0]
 ```
+
+In the last two lines, the optimal design vector and objective function value are retrieved from the optimizer.
+As you can see, they correspond to the first elements of the optimizer's `pop` and `fit` arrays.
+These are multi-dimensional arrays which store the population's design vectors and objective function values for each
+individual in the population (1 row per individual).
+At each new generation, these arrays are sorted such that the first rows correspond to the best individual and the last
+to the worst.
 
 For multi-objective problems, it is more useful to look at the pareto front:
 
@@ -58,7 +65,7 @@ the instance of the `NSDE` class as an iterator:
 
 ```python
 for generation in opt:
-    print("f_opt = ", generation.best_fit)
+    print("f_opt = ", generation.fit[0])
 ```
 
 ### OpenMDAO
