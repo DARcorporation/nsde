@@ -381,9 +381,10 @@ class NSDEDriver(Driver):
 
         # Pull optimal parameters back into framework and re-run, so that
         # framework is left in the right final state
+        best = de.pop[0]
         for name in desvars:
             i, j = self._desvar_idx[name]
-            val = de.best[i:j]
+            val = best[i:j]
             self.set_design_var(name, val)
 
         with RecordingDebugging(self._get_name(), self.iter_count, self) as rec:

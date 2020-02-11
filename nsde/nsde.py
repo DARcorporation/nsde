@@ -78,12 +78,6 @@ class NSDE:
         Fitness of the individuals in the population
     con : np.array
         Constraint violations of the individuals in the population
-    best_idx, worst_idx : int
-        Index of the best and worst individuals of the population
-    best, worst : np.array
-        Chromosomes of the best and worst individuals in the population
-    best_fit, worst_fit : np.array
-        Fitness of the best and worst individuals in the population
     generation : int
         Generation counter
     """
@@ -143,9 +137,6 @@ class NSDE:
         self.fit = None
         self.con = None
         self.fronts = None
-        self.best_idx, self.worst_idx = 0, 0
-        self.best, self.worst = None, None
-        self.best_fit, self.worst_fit = 0, 0
         self.dx, self.df = np.inf, np.inf
 
         self.generation = 0
@@ -308,8 +299,8 @@ class NSDE:
 
             # Compute spreads and update generation counter
             if self.n_obj == 1:
-                self.dx = np.linalg.norm(self.worst - self.best)
-                self.df = np.abs(self.worst_fit - self.best_fit)
+                self.dx = np.linalg.norm(self.pop[0] - self.pop[-1])
+                self.df = np.abs(self.fit[0] - self.fit[-1])
             else:
                 # TODO: Find a way to measure convergence for pareto based optimization
                 self.dx = np.inf
@@ -463,7 +454,7 @@ class NSDE:
 
     def update(self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None):
         """
-        Update the population (and f/cr if self-adaptive) and identify the new best and worst individuals.
+        Update the population (and f/cr if self-adaptive).
 
         Parameters
         ----------
@@ -489,23 +480,18 @@ class NSDE:
         else:
             self._update_multi(pop_new, fit_new, con_new, f_new, cr_new)
 
-        if self.n_obj == 1:
-            self.best_idx = np.argmin(self.fit)
-            self.worst_idx = np.argmax(self.fit)
-        else:
-            # TODO: This is not the best way to do this...
-            self.best_idx = self.rng.choice(self.fronts[0])
-            self.worst_idx = self.rng.choice(self.fronts[-1])
-
-        self.best = self.pop[self.best_idx]
-        self.best_fit = self.fit[self.best_idx]
-
-        self.worst = self.pop[self.worst_idx]
-        self.worst_fit = self.fit[self.worst_idx]
-
     def _update_single(
         self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None
     ):
+        con_tol = 1e-6
+        if self.n_con:
+            cs = np.sum(
+                np.where(np.greater(self.con, con_tol), self.con, 0.0),
+                axis=1
+            )
+        else:
+            cs = 0
+
         if (
             pop_new is not None
             and fit_new is not None
@@ -513,28 +499,20 @@ class NSDE:
             and cr_new is not None
         ):
             if self.n_con:
-                con_tol = 1e-6
-                f1 = np.all(con_new <= con_tol, axis=1)
-                f2 = np.all(self.con <= con_tol, axis=1)
+                c_new = np.all(con_new <= con_tol, axis=1)
+                c_old = np.all(self.con <= con_tol, axis=1)
+                cs_new = np.sum(
+                    np.where(np.greater(con_new, con_tol), con_new, 0.0), axis=1
+                )
+
                 improved_indices = np.argwhere(
-                    ((f1 & f2) & (fit_new <= self.fit).flatten())
-                    + (f1 & ~f2)
-                    + (
-                        (~f1 & ~f2)
-                        & (
-                            np.sum(
-                                np.where(np.greater(con_new, con_tol), con_new, 0.0),
-                                axis=1,
-                            )
-                            <= np.sum(
-                                np.where(np.greater(self.con, con_tol), self.con, 0.0),
-                                axis=1,
-                            )
-                        )
-                    )
+                    ((c_new & c_old) & (fit_new <= self.fit).flatten())
+                    + (c_new & ~c_old)
+                    + ((~c_new & ~c_old) & (cs_new <= cs))
                 )
 
                 self.con[improved_indices] = con_new[improved_indices]
+                cs[improved_indices] = cs_new[improved_indices]
             else:
                 improved_indices = np.argwhere((fit_new <= self.fit).flatten())
 
@@ -544,6 +522,20 @@ class NSDE:
             if self.adaptivity != 0:
                 self.f[improved_indices] = f_new[improved_indices]
                 self.cr[improved_indices] = cr_new[improved_indices]
+
+        # Sort population so the best individual is always the first
+        idx_sort = np.argsort(
+            self.fit.flatten() + np.where(cs != 0.0, cs * np.max(self.fit), 0.0)
+        )
+
+        self.pop = self.pop[idx_sort]
+        self.fit = self.fit[idx_sort]
+        if self.n_con:
+            self.con = self.con[idx_sort]
+
+        if self.adaptivity != 0:
+            self.f = self.f[idx_sort]
+            self.cr = self.cr[idx_sort]
 
     def _update_multi(
         self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None

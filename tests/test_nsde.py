@@ -33,8 +33,8 @@ def _test_single_objective(fobj, x_opt, f_opt, *args):
         pass
 
     try:
-        assert de.best == pytest.approx(x_opt, rel=1e-1, abs=1e-2)
-        assert de.best_fit == pytest.approx(f_opt, rel=1e-1, abs=1e-2)
+        assert de.pop[0] == pytest.approx(x_opt, rel=1e-1, abs=1e-2)
+        assert de.fit[0] == pytest.approx(f_opt, rel=1e-1, abs=1e-2)
     except AssertionError as e:
         if args[-1] == 0 or args[-2] == "clip":
             assert de.dx <= de.tolx or de.generation >= de.max_gen
@@ -83,7 +83,7 @@ def test_single_objective_nan_landscape():
     for _ in de:
         pass
 
-    assert de.best == pytest.approx(0.0, abs=1e-5)
+    assert de.pop[0] == pytest.approx(0.0, abs=1e-5)
 
 
 def test_multi_objective_unconstrained():
@@ -123,4 +123,4 @@ def test_initial_infeasible_population():
     de.ub[1] = 100
     de.run()
 
-    assert de.best_fit[0] >= 75 - 1e-6
+    assert de.fit[0] >= 75 - 1e-6
