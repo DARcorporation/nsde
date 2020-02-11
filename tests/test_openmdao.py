@@ -129,3 +129,9 @@ def test_multi_objective_unconstrained():
     assert problem["f"][1] == pytest.approx((problem["f"][0] ** 0.5 - 2) ** 2, abs=1e-2)
 
     problem.cleanup()
+
+
+def test_print_progress(problem):
+    problem, dim = problem
+    problem.driver.options["show_progress"] = True
+    _go_problem(problem)

@@ -41,7 +41,7 @@ def progress_string(de):
         "f*: {:> 10.4g}, "
         "dx: {:> 10.4g}, "
         "df: {:> 10.4g}".format(
-            de.best_fit[0],
+            de.fit[0, 0],
             de.dx,
             de.df[0] if isinstance(de.df, np.ndarray) else de.df
         )
