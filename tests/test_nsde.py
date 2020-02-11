@@ -25,8 +25,8 @@ def binh_and_korn(x):
     )
 
 
-def _test_single_objective(fobj, x_opt, f_opt, *args):
-    de = NSDE(*args, seed=11, tolf=0)
+def _test_single_objective(fobj, x_opt, f_opt, *args, **kwargs):
+    de = NSDE(*args, seed=11, tolf=0, **kwargs)
     de.init(fobj, bounds=[(-100, 100)] * 2)
 
     for _ in de:
@@ -124,3 +124,11 @@ def test_initial_infeasible_population():
     de.run()
 
     assert de.fit[0] >= 75 - 1e-6
+
+
+def test_constraint_tolerance():
+    def fobj(x):
+        return paraboloid(x), 1 - x
+
+    _test_single_objective(fobj, 0, 0, tolc=np.inf)
+    _test_single_objective(fobj, 1, 2, tolc=1e-6)

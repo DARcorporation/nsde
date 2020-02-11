@@ -169,6 +169,9 @@ class NSDEDriver(Driver):
             "tolf", default=1e-8, desc="Tolerance of the fitness spread."
         )
         self.options.declare(
+            "tolc", default=1e-6, desc="Constraint violation tolerance."
+        )
+        self.options.declare(
             "pop_size",
             default=0,
             desc="Number of individuals (points) to use for the optimization. "
@@ -237,6 +240,7 @@ class NSDEDriver(Driver):
             max_gen=self.options["max_gen"],
             tolx=self.options["tolx"],
             tolf=self.options["tolf"],
+            tolc=self.options["tolc"],
             n_pop=self.options["pop_size"],
             seed=self._seed,
             comm=comm,
@@ -327,6 +331,7 @@ class NSDEDriver(Driver):
         de.max_gen = self.options["max_gen"]
         de.tolx = self.options["tolx"]
         de.tolf = self.options["tolf"]
+        de.tolc = self.options["tolc"]
 
         self._check_for_missing_objective()
 
@@ -474,7 +479,7 @@ class NSDEDriver(Driver):
                                 np.abs(con["equals"] - val),
                                 np.abs(1 - val / con["equals"]),
                             ).flatten()
-                            - 1e-6,
+                            - self.options["tolc"],
                         )
 
             # Record after getting obj to assure they have

@@ -58,6 +58,8 @@ class NSDE:
         Maximum number of generations
     tolx, tolf : float
         Tolerances on the design vectors' and objective function values' spreads
+    tolc : float
+        Constraint violation tolerance.
     n_dim : int
         Number of dimension of the problem
     n_pop : int
@@ -91,6 +93,7 @@ class NSDE:
         max_gen=1000,
         tolx=1e-8,
         tolf=1e-8,
+        tolc=1e-6,
         n_pop=None,
         seed=None,
         comm=None,
@@ -107,6 +110,7 @@ class NSDE:
         self.max_gen = max_gen
         self.tolx = tolx
         self.tolf = tolf
+        self.tolc = tolc
 
         self.n_dim = 0
         self.n_obj = 0
@@ -483,10 +487,9 @@ class NSDE:
     def _update_single(
         self, pop_new=None, fit_new=None, con_new=None, f_new=None, cr_new=None
     ):
-        con_tol = 1e-6
         if self.n_con:
             cs = np.sum(
-                np.where(np.greater(self.con, con_tol), self.con, 0.0),
+                np.where(np.greater(self.con, self.tolc), self.con, 0.0),
                 axis=1
             )
         else:
@@ -499,10 +502,10 @@ class NSDE:
             and cr_new is not None
         ):
             if self.n_con:
-                c_new = np.all(con_new <= con_tol, axis=1)
-                c_old = np.all(self.con <= con_tol, axis=1)
+                c_new = np.all(con_new <= self.tolc, axis=1)
+                c_old = np.all(self.con <= self.tolc, axis=1)
                 cs_new = np.sum(
-                    np.where(np.greater(con_new, con_tol), con_new, 0.0), axis=1
+                    np.where(np.greater(con_new, self.tolc), con_new, 0.0), axis=1
                 )
 
                 improved_indices = np.argwhere(
