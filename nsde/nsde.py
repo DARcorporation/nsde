@@ -573,10 +573,12 @@ class NSDE:
             ]
         ].tolist()
         new_idxs = []
+        counter = 0
+        self.fronts = []
         for front in fronts:
             new_idxs += front
-
-        self.fronts = [list(range(i, i + len(f))) for i, f in enumerate(fronts)]
+            self.fronts += [list(range(counter, counter + len(front)))]
+            counter += len(front)
 
         self.pop = self.pop[new_idxs]
         self.fit = self.fit[new_idxs]
