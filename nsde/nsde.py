@@ -10,7 +10,7 @@ except ModuleNotFoundError:
 
     warnings.warn("OpenMDAO is not installed. Concurrent evaluation is not available.")
 
-from . import sorting
+from . import sorting, hv
 from .evolution_strategy import EvolutionStrategy
 
 
@@ -146,7 +146,7 @@ class NSDE:
         self.fit = None
         self.con = None
         self.fronts = None
-        self.dx, self.df = np.inf, np.inf
+        self.dx, self.df, self.hv = np.inf, np.inf, np.inf
 
         self.generation = 0
 
@@ -311,9 +311,11 @@ class NSDE:
                 self.dx = np.linalg.norm(self.pop[0] - self.pop[-1])
                 self.df = np.abs(self.fit[0] - self.fit[-1])
             else:
-                # TODO: Find a way to measure convergence for pareto based optimization
-                self.dx = np.inf
-                self.df = np.inf
+                pareto = self.fit[self.fronts[0]]
+                # lb = np.min(pareto, axis=0, keepdims=True)
+                # ub = np.max(pareto, axis=0, keepdims=True)
+                # pareto_norm = 1 + (pareto - lb) / (ub - lb)
+                self.hv = hv.hv(pareto, [140, 50])
             self.generation += 1
 
             # Return the new state

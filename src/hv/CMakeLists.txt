@@ -4,4 +4,4 @@ project(cpp)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(include)
-add_executable(cpp test.cpp sorting.cpp)
+add_executable(cpp test.cpp hv.c)

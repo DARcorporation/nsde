@@ -38,15 +38,26 @@ class get_pybind_include(object):
 ext_modules = [
     Extension(
         "nsde.sorting",
-        ["src/sorting_module.cpp", "src/sorting.cpp"],
+        ["src/sorting/sorting_module.cpp", "src/sorting/sorting.cpp"],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
-            "src/include",
+            "src/sorting/include",
         ],
         language="c++",
-    )
+    ),
+    Extension(
+        "nsde.hv",
+        ["src/hv/hv_module.cpp", "src/hv/hv.c"],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            "src/hv/include",
+        ],
+        language="c++",
+    ),
 ]
 
 
