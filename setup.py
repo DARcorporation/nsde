@@ -136,7 +136,6 @@ setup(
     install_requires=[
         "numpy>=1.17",
         "tqdm<5,>=4.32",
-        "six<1.13,>=1.12",
         "pybind11>=2.4",
     ],
     setup_requires=["pybind11>=2.4"],

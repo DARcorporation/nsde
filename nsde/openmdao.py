@@ -15,7 +15,6 @@ import os
 from openmdao.core.analysis_error import AnalysisError
 from openmdao.core.driver import Driver, RecordingDebugging
 from openmdao.utils.mpi import MPI
-from six import iteritems, itervalues, next
 
 try:
     from tqdm import tqdm
@@ -340,7 +339,7 @@ class NSDEDriver(Driver):
         desvar_vals = self.get_design_var_values()
 
         count = 0
-        for name, meta in iteritems(desvars):
+        for name, meta in desvars.items():
             if name in self._designvars_discrete:
                 val = desvar_vals[name]
                 if np.isscalar(val):
@@ -356,7 +355,7 @@ class NSDEDriver(Driver):
         x0 = np.empty(count)
 
         # Figure out bounds vectors and initial design vars
-        for name, meta in iteritems(desvars):
+        for name, meta in desvars.items():
             i, j = self._desvar_idx[name]
             lb = meta["lower"]
             if isinstance(lb, float):
@@ -436,14 +435,14 @@ class NSDEDriver(Driver):
                 model._clear_iprint()
 
             # Get the objective functions' values
-            f = np.array(list(itervalues(self.get_objective_values())))
+            f = np.array(list(self.get_objective_values().values()))
 
             # Get the constraint violations
             g = np.array([])
             with np.errstate(
                 divide="ignore"
             ):  # Ignore divide-by-zero warnings temporarily
-                for name, val in iteritems(self.get_constraint_values()):
+                for name, val in self.get_constraint_values().items():
                     con = self._cons[name]
                     # The not used fields will either None or a very large number
                     # All constraints will be converted into standard <= 0 form.
