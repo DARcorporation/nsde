@@ -40,10 +40,10 @@ ext_modules = [
         "nsde.sorting",
         ["src/sorting/sorting_module.cpp", "src/sorting/sorting.cpp"],
         include_dirs=[
+            "src/sorting/include",
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
-            "src/sorting/include",
         ],
         language="c++",
     ),
@@ -51,10 +51,10 @@ ext_modules = [
         "nsde.hv",
         ["src/hv/hv_module.cpp", "src/hv/hv.c"],
         include_dirs=[
+            "src/hv/include",
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
-            "src/hv/include",
         ],
         language="c++",
     ),

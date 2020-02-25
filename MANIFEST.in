@@ -7,4 +7,5 @@ include *.md
 include LICENSE.txt
 
 # Include the headers
-graft src/include
+graft src/hv/include
+graft src/sorting/include
