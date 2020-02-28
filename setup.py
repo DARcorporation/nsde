@@ -130,7 +130,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Daniel de Vries",
     author_email="danieldevries6@gmail.com",
-    packages=["nsde"],
+    packages=["nsde", "nsde.strategies"],
     ext_modules=ext_modules,
     python_requires=">=3.6, <4",
     install_requires=[
