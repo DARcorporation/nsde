@@ -11,7 +11,7 @@ import setuptools
 here = path.abspath(path.dirname(__file__))
 
 __version__ = re.findall(
-    r"""__version__ = ["']+([0-9\.]*)["']+""",
+    r"""__version__ = \"(.+)\"""",
     open(path.join(here, "nsde/__init__.py")).read(),
 )[0]
 
