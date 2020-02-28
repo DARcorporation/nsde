@@ -25,6 +25,7 @@ except ModuleNotFoundError:
 
 
 from nsde import NSDE, EvolutionStrategy
+from nsde.strategies import mutation_strategies, crossover_strategies, repair_strategies
 
 if not MPI:
     rank = 0
@@ -118,10 +119,10 @@ class NSDEDriver(Driver):
             values=[
                 "/".join(strategy)
                 for strategy in itertools.product(
-                    list(EvolutionStrategy.__mutation_strategies__.keys()),
+                    list(mutation_strategies.keys()),
                     ["1", "2", "3"],
-                    list(EvolutionStrategy.__crossover_strategies__.keys()),
-                    list(EvolutionStrategy.__repair_strategies__.keys()),
+                    list(crossover_strategies.keys()),
+                    list(repair_strategies.keys()),
                 )
             ],
             desc="Evolution strategy to use for the differential evolution. "

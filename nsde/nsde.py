@@ -11,7 +11,7 @@ except ModuleNotFoundError:
     warnings.warn("OpenMDAO is not installed. Concurrent evaluation is not available.")
 
 from . import sorting, hv
-from .evolution_strategy import EvolutionStrategy
+from .strategies import EvolutionStrategy
 
 
 def mpi_fobj_wrapper(fobj):

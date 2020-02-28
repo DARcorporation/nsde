@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from nsde import *
-from . import all_strategies, get_strategy_designation
+from nsde.strategies import mutation, crossover, repair
 
 
 def paraboloid(x):
@@ -42,14 +42,10 @@ def _test_single_objective(fobj, x_opt, f_opt, *args, **kwargs):
             raise e
 
 
-@pytest.mark.parametrize("repair", EvolutionStrategy.__repair_strategies__.keys())
-@pytest.mark.parametrize(
-    "crossover", EvolutionStrategy.__crossover_strategies__.keys()
-)
+@pytest.mark.parametrize("repair", repair.__strategies__.keys())
+@pytest.mark.parametrize("crossover", crossover.__strategies__.keys())
 @pytest.mark.parametrize("number", [1, 2])
-@pytest.mark.parametrize(
-    "mutation", EvolutionStrategy.__mutation_strategies__.keys()
-)
+@pytest.mark.parametrize("mutation", mutation.__strategies__.keys())
 def test_strategies(mutation, number, crossover, repair):
     strategy = "/".join([mutation, str(number), crossover, repair])
     de = NSDE(strategy=strategy)
