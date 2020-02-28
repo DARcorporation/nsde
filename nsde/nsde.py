@@ -148,6 +148,9 @@ class NSDE:
         self.fronts = None
         self.dx, self.df, self.hv = np.inf, np.inf, np.inf
 
+        self.pareto_lb = +np.inf
+        self.pareto_ub = -np.inf
+
         self.generation = 0
 
         self._is_initialized = False
@@ -312,10 +315,10 @@ class NSDE:
                 self.df = np.abs(self.fit[0] - self.fit[-1])
             else:
                 pareto = self.fit[self.fronts[0]]
-                # lb = np.min(pareto, axis=0, keepdims=True)
-                # ub = np.max(pareto, axis=0, keepdims=True)
-                # pareto_norm = 1 + (pareto - lb) / (ub - lb)
-                self.hv = hv.hv(pareto, [140, 50])
+                self.pareto_lb = np.minimum(self.pareto_lb, np.min(pareto, axis=0, keepdims=True))
+                self.pareto_ub = np.maximum(self.pareto_ub, np.max(pareto, axis=0, keepdims=True))
+                pareto_norm = 1 + (pareto - self.pareto_lb) / (self.pareto_ub - self.pareto_lb)
+                self.hv = hv.hv(pareto_norm, 2.1 * np.ones(self.n_obj))
             self.generation += 1
 
             # Return the new state
