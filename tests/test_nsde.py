@@ -119,7 +119,8 @@ def test_initial_infeasible_population():
     de.ub[1] = 100
     de.run()
 
-    assert de.fit[0] >= 75 - 1e-6
+    for ind in de.pop:
+        assert ind[1] >= 75 - 1e-3
 
 
 def test_constraint_tolerance():
