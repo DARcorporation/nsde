@@ -441,7 +441,7 @@ class NSDE:
                 f_new = np.where(
                     self.rng.uniform(size=self.n_pop) < 0.9,
                     self.f,
-                    self.rng.uniform(size=self.n_pop) * 0.9 + 1,
+                    self.rng.uniform(size=self.n_pop) * 0.9 + 0.1,
                 )
                 cr_new = np.where(
                     self.rng.uniform(size=self.n_pop) < 0.9,

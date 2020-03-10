@@ -88,13 +88,13 @@ class rand(MutationStrategy):
             f_mutant = f[idxs[0]] + np.sum(
                 [
                     rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
-                    for i in range(1, self.n)
+                    for i in range(1, self.n + 1)
                 ]
             )
             cr_mutant = cr[idxs[0]] + np.sum(
                 [
                     rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
-                    for i in range(1, self.n)
+                    for i in range(1, self.n + 1)
                 ]
             )
         else:
@@ -122,13 +122,13 @@ class best(MutationStrategy):
             f_mutant = f[i_best] + np.sum(
                 [
                     rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
-                    for i in range(1, self.n)
+                    for i in range(1, self.n + 1)
                 ]
             )
             cr_mutant = cr[i_best] + np.sum(
                 [
                     rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
-                    for i in range(1, self.n)
+                    for i in range(1, self.n + 1)
                 ]
             )
         else:
@@ -159,7 +159,7 @@ class rand_to_best(MutationStrategy):
                 + np.sum(
                     [
                         rng.normal() * 0.5 * (f[idxs[i]] - f[idxs[i + 1]])
-                        for i in range(1, self.n)
+                        for i in range(1, self.n + 1)
                     ]
                 )
             )
@@ -169,7 +169,7 @@ class rand_to_best(MutationStrategy):
                 + np.sum(
                     [
                         rng.normal() * 0.5 * (cr[idxs[i]] - cr[idxs[i + 1]])
-                        for i in range(1, self.n)
+                        for i in range(1, self.n + 1)
                     ]
                 )
             )
