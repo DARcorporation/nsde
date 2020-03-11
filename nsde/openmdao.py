@@ -228,7 +228,7 @@ class NSDEDriver(Driver):
         super(NSDEDriver, self)._setup_driver(problem)
 
         model_mpi = None
-        comm = self._problem.comm
+        comm = problem.comm
         if self._concurrent_pop_size > 0:
             model_mpi = (self._concurrent_pop_size, self._concurrent_color)
         elif not self.options["run_parallel"]:
@@ -323,7 +323,7 @@ class NSDEDriver(Driver):
         boolean
             Failure flag; True if failed to converge, False is successful.
         """
-        model = self._problem.model
+        model = self._problem().model
         de = self._de
 
         de.strategy = EvolutionStrategy(self.options["strategy"])
@@ -419,7 +419,7 @@ class NSDEDriver(Driver):
         g : ndarray
             Constraint values
         """
-        model = self._problem.model
+        model = self._problem().model
 
         for name in self._designvars:
             i, j = self._desvar_idx[name]

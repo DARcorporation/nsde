@@ -139,7 +139,7 @@ setup(
         "pybind11>=2.4",
     ],
     setup_requires=["pybind11>=2.4"],
-    extras_require={"openmdao": "openmdao<2.10,>=2.8"},
+    extras_require={"openmdao": "openmdao<4,>=2.10"},
     tests_require=["pytest", "parameterized"],
     cmdclass={"build_ext": BuildExt},
     url="https://github.com/daniel-de-vries/nsde",
