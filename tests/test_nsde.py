@@ -115,12 +115,11 @@ def test_initial_infeasible_population():
         return np.sqrt(np.sum(x ** 2)), 75 - x[1]
 
     de = NSDE(strategy="best/1/bin/random")
-    de.init(problem, bounds=[(0, 100), (0, 75)])
-    de.ub[1] = 100
+    de.init(problem, bounds=[(0, 100)] * 2, pop=np.random.uniform([0, 0], [100, 75], (20, 2)))
     de.run()
 
     for ind in de.pop:
-        assert ind[1] >= 75 - 1e-3
+        assert ind[1] >= 75 - 1e-6
 
 
 def test_constraint_tolerance():
