@@ -41,6 +41,29 @@ class MutationStrategy:
         s = np.sum(r[1:-1:2] - r[2: len(r) + 1: 2], axis=0)
         return idxs, r, s
 
+    @staticmethod
+    def _repair_f_cr(f, cr):
+        """
+        Ensure mutated mutation and crossover rates are always within a given range.
+
+        Parameters
+        ----------
+        f : array_like
+            Mutation rate(s)
+        cr : array_like
+            Crossover rate(s)
+
+        Returns
+        -------
+        f : array_like
+            Repaired mutation rate(s)
+        cr : array_like
+            Repaired crossover rate(s)
+        """
+        f = np.clip(f, 0.1, 1.0)
+        cr = np.clip(cr, 0.0, 1.0)
+        return f, cr
+
     def __call__(self, parent_idx, population, fitness, fronts, f, cr, rng, self_adaptive):
         """
         Create a mutated chromosome based on a parent donor and any properties related to fitness and dominance.
@@ -97,6 +120,8 @@ class rand(MutationStrategy):
                     for i in range(1, self.n + 1)
                 ]
             )
+
+            f_mutant, cr_mutant = self._repair_f_cr(f_mutant, cr_mutant)
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
@@ -131,6 +156,8 @@ class best(MutationStrategy):
                     for i in range(1, self.n + 1)
                 ]
             )
+
+            f_mutant, cr_mutant = self._repair_f_cr(f_mutant, cr_mutant)
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
@@ -173,6 +200,8 @@ class rand_to_best(MutationStrategy):
                     ]
                 )
             )
+
+            f_mutant, cr_mutant = self._repair_f_cr(f_mutant, cr_mutant)
         else:
             f_mutant = f[parent_idx]
             cr_mutant = cr[parent_idx]
